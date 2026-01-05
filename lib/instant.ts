@@ -39,9 +39,16 @@ export type Answer = {
 };
 
 // Initialize InstantDB with schema
-const APP_ID = process.env.NEXT_PUBLIC_INSTANTDB_APP_ID || "";
+const APP_ID = process.env.NEXT_PUBLIC_INSTANTDB_APP_ID;
 
-const db = init({ appId: APP_ID, schema });
+if (!APP_ID) {
+  console.error(
+    "NEXT_PUBLIC_INSTANTDB_APP_ID is not set. Please add it to your environment variables."
+  );
+}
+
+// Use a placeholder if not set (will show error in console but won't crash during build)
+const db = init({ appId: APP_ID || "placeholder-app-id", schema });
 
 // Export typed db and transaction helpers
 export { db, tx, id };
