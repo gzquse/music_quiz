@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { db } from "@/lib/instant";
 import { QuizCard } from "@/components/quiz";
-import { Button } from "@/components/ui";
 
 export default function HomePage() {
   const { isLoading, error, data } = db.useQuery({
@@ -41,11 +40,7 @@ export default function HomePage() {
             </div>
             <span className="font-semibold text-lg">Music Survey</span>
           </Link>
-          <Link href="/admin">
-            <Button variant="ghost" size="sm">
-              Admin
-            </Button>
-          </Link>
+          {/* Admin link removed from public view */}
         </div>
       </header>
 
