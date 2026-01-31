@@ -17,8 +17,12 @@ export default function ParticipantsPage() {
   const assignments = data?.teacher_student_assignments || [];
   const quizzes = data?.quizzes || [];
 
-  const studentQuiz = quizzes.find((q) => q.variant === "student");
-  const teacherQuiz = quizzes.find((q) => q.variant === "teacher");
+  const studentQuiz =
+    quizzes.find((q) => q.variant === "student") ??
+    quizzes.find((q) => (q.title || "").toLowerCase().includes("student"));
+  const teacherQuiz =
+    quizzes.find((q) => q.variant === "teacher") ??
+    quizzes.find((q) => (q.title || "").toLowerCase().includes("teacher"));
 
   const [newStudentName, setNewStudentName] = useState("");
   const [newTeacherName, setNewTeacherName] = useState("");

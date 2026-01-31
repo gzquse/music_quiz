@@ -1,7 +1,7 @@
 "use client";
 
 import { db } from "@/lib/instant";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Button } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
 
@@ -9,10 +9,24 @@ export default function AdminDashboardPage() {
   const { data, isLoading } = db.useQuery({
     quizzes: {},
     responses: {},
+    students: {},
+    teachers: {},
   });
 
   const quizzes = data?.quizzes || [];
   const responses = data?.responses || [];
+  const students = data?.students || [];
+  const teachers = data?.teachers || [];
+
+  const studentQuiz = quizzes.find(
+    (q: { variant?: string; title?: string }) =>
+      q.variant === "student" || (q.title || "").toLowerCase().includes("student")
+  );
+  const teacherQuiz = quizzes.find(
+    (q: { variant?: string; title?: string }) =>
+      q.variant === "teacher" || (q.title || "").toLowerCase().includes("teacher")
+  );
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   // Calculate stats
   const totalQuizzes = quizzes.length;
@@ -110,6 +124,89 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Survey links - all 10 participant links */}
+      {studentQuiz && teacherQuiz && (students.length > 0 || teachers.length > 0) && (
+        <Card className="mb-8">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Survey Links</CardTitle>
+              <p className="text-sm text-[var(--muted)] mt-1">
+                Copy and share these links with participants. Same links each week.
+              </p>
+            </div>
+            <Link href="/admin/participants">
+              <Button variant="ghost" size="sm">Manage Participants</Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div>
+                <h3 className="font-medium mb-2 text-sm text-[var(--muted)]">Students (6 links)</h3>
+                <div className="space-y-2">
+                  {students.map((s: { id: string; name: string }, i: number) => {
+                    const url = `${baseUrl}/quiz/${studentQuiz.id}/student/${s.id}`;
+                    return (
+                      <div key={s.id} className="flex items-center gap-2">
+                        <span className="text-sm w-20">{s.name}</span>
+                        <input
+                          readOnly
+                          value={url}
+                          className="flex-1 px-2 py-1 text-xs rounded border border-[var(--border)] bg-[var(--surface)] truncate"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(url);
+                            alert("Copied");
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  {students.length === 0 && (
+                    <p className="text-sm text-[var(--muted)]">No students. Add in Participants.</p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <h3 className="font-medium mb-2 text-sm text-[var(--muted)]">Teachers (4 links)</h3>
+                <div className="space-y-2">
+                  {teachers.map((t: { id: string; name: string }) => {
+                    const url = `${baseUrl}/quiz/${teacherQuiz.id}/teacher/${t.id}`;
+                    return (
+                      <div key={t.id} className="flex items-center gap-2">
+                        <span className="text-sm w-20">{t.name}</span>
+                        <input
+                          readOnly
+                          value={url}
+                          className="flex-1 px-2 py-1 text-xs rounded border border-[var(--border)] bg-[var(--surface)] truncate"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(url);
+                            alert("Copied");
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  {teachers.length === 0 && (
+                    <p className="text-sm text-[var(--muted)]">No teachers. Add in Participants.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Surveys Table */}
       <Card>
