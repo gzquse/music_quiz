@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { db } from "@/lib/instant";
+import { db, tx } from "@/lib/instant";
 import { Card, Button } from "@/components/ui";
 import { formatDateTime } from "@/lib/utils";
 
@@ -83,6 +83,21 @@ export default function ResponsesViewerPage() {
 
   const getTeacherName = (teacherId: string) => teachers.find((t: { id: string }) => t.id === teacherId)?.name ?? "Unknown";
   const getStudentName = (studentId: string) => students.find((s: { id: string }) => s.id === studentId)?.name ?? "Unknown";
+
+  const deleteResponse = async (responseId: string) => {
+    if (!confirm("Delete this response? This cannot be undone.")) return;
+    const responseAnswers = answers.filter((a: { responseId: string }) => a.responseId === responseId);
+    try {
+      const txs = [
+        ...responseAnswers.map((a: { id: string }) => tx.answers[a.id].delete()),
+        tx.responses[responseId].delete(),
+      ];
+      await db.transact(txs);
+    } catch (err) {
+      console.error("Delete failed:", err);
+      alert("Failed to delete response.");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -175,11 +190,21 @@ export default function ResponsesViewerPage() {
 
                       {teacherResponse ? (
                         <div>
-                          <p className="text-xs text-[var(--muted)] mb-2">
-                            Teacher response
-                            {selectedWeek !== "all" && ` (Week ${selectedWeek})`}
-                            {": "}{formatDateTime(teacherResponse.submittedAt)}
-                          </p>
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs text-[var(--muted)]">
+                              Teacher response
+                              {selectedWeek !== "all" && ` (Week ${selectedWeek})`}
+                              {": "}{formatDateTime(teacherResponse.submittedAt)}
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteResponse(teacherResponse.id)}
+                              className="text-[var(--error)] hover:bg-[var(--error)]/10 text-xs"
+                            >
+                              Delete
+                            </Button>
+                          </div>
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-sm">
                             {scaleQuestions.slice(0, 6).map((q: { id: string; order: number; text: string }) => (
                               <div key={q.id} className="bg-[var(--surface-hover)] rounded px-2 py-1">
@@ -252,10 +277,23 @@ export default function ResponsesViewerPage() {
             <div className="p-6">
               {selectedStudentResponse ? (
                 <div>
-                  <p className="text-sm text-[var(--muted)] mb-4">
-                    {selectedWeek !== "all" && `Week ${selectedWeek} - `}
-                    Submitted: {formatDateTime(selectedStudentResponse.submittedAt)}
-                  </p>
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm text-[var(--muted)]">
+                      {selectedWeek !== "all" && `Week ${selectedWeek} - `}
+                      Submitted: {formatDateTime(selectedStudentResponse.submittedAt)}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        deleteResponse(selectedStudentResponse.id);
+                        setSelectedStudentId(null);
+                      }}
+                      className="text-[var(--error)] hover:bg-[var(--error)]/10"
+                    >
+                      Delete
+                    </Button>
+                  </div>
                   <div className="space-y-4">
                     {scaleQuestions.map((q: { id: string; order: number; text: string }) => (
                       <div key={q.id} className="flex justify-between items-center border-b border-[var(--border)] pb-2">

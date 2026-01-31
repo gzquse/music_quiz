@@ -6,9 +6,14 @@ Base URL: **https://music-quiz-xi.vercel.app**
 
 ## Setup (one-time)
 
-1. **Admin login**: https://music-quiz-xi.vercel.app/admin/login
+1. **Create 8-week test data** (optional, for viewing analytics):
+   - Set `NEXT_PUBLIC_INSTANTDB_APP_ID` and `INSTANTDB_ADMIN_TOKEN` in `.env.local` (use your cloud InstantDB credentials)
+   - Run: `npm run seed`
+   - Creates 6 students, 4 teachers, assignments, student/teacher surveys, and 96 responses (48 student + 48 teacher across 8 weeks)
 
-2. **Participants** (Admin > Participants):
+2. **Admin login**: https://music-quiz-xi.vercel.app/admin/login
+
+3. **Participants** (Admin > Participants):
    - 6 students: Student 1, Student 2, Student 3, Student 4, Student 5, Student 6
    - 4 teachers: Teacher 1, Teacher 2, Teacher 3, Teacher 4
    - Assignments:

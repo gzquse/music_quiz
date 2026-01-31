@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { db } from "@/lib/instant";
+import { db, tx } from "@/lib/instant";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from "@/components/ui";
 import { ChartPanel } from "@/components/admin/ChartPanel";
 import { formatDateTime, calculateAverage } from "@/lib/utils";
@@ -92,6 +92,21 @@ export default function AnalyticsPage() {
 
   const scaleQuestions = questions.filter((q: { type: string }) => q.type === "scale");
   const scaleQuestionIds = scaleQuestions.map((q: { id: string }) => q.id);
+
+  const deleteResponse = async (responseId: string) => {
+    if (!confirm("Delete this response? This cannot be undone.")) return;
+    const responseAnswers = answers.filter((a: { responseId: string }) => a.responseId === responseId);
+    try {
+      const txs = [
+        ...responseAnswers.map((a: { id: string }) => tx.answers[a.id].delete()),
+        tx.responses[responseId].delete(),
+      ];
+      await db.transact(txs);
+    } catch (err) {
+      console.error("Delete failed:", err);
+      alert("Failed to delete response.");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -284,6 +299,9 @@ export default function AnalyticsPage() {
                                         <th className="text-center py-2 px-2 font-medium text-[var(--muted)]">
                                           Avg
                                         </th>
+                                        <th className="text-right py-2 px-2 font-medium text-[var(--muted)]">
+                                          Actions
+                                        </th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -325,6 +343,18 @@ export default function AnalyticsPage() {
                                             ))}
                                             <td className="text-center py-2 px-2 font-medium">
                                               {rowAvg}
+                                            </td>
+                                            <td className="py-2 px-2 text-right">
+                                              {w?.response && (
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() => deleteResponse(w.response.id)}
+                                                  className="text-[var(--error)] hover:bg-[var(--error)]/10 text-xs"
+                                                >
+                                                  Delete
+                                                </Button>
+                                              )}
                                             </td>
                                           </tr>
                                         );
@@ -412,6 +442,7 @@ export default function AnalyticsPage() {
                           Q{q.order + 1}
                         </th>
                       ))}
+                      <th className="text-right py-3 px-4 font-medium text-[var(--muted)]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -457,6 +488,16 @@ export default function AnalyticsPage() {
                                 </td>
                               );
                             })}
+                            <td className="py-3 px-4 text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteResponse(response.id)}
+                                className="text-[var(--error)] hover:bg-[var(--error)]/10 text-xs"
+                              >
+                                Delete
+                              </Button>
+                            </td>
                           </tr>
                         );
                       })}
