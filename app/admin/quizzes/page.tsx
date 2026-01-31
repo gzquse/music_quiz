@@ -106,6 +106,9 @@ export default function QuizzesPage() {
                 <Link href={`/admin/quizzes/${quiz.id}`}>
                   <Button variant="secondary" size="sm">Edit</Button>
                 </Link>
+                <Link href={`/admin/quizzes/${quiz.id}/responses`}>
+                  <Button variant="secondary" size="sm">Responses</Button>
+                </Link>
                 <Link href={`/admin/quizzes/${quiz.id}/analytics`}>
                   <Button variant="secondary" size="sm">Analytics</Button>
                 </Link>

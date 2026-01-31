@@ -82,7 +82,10 @@ export default function HomePage() {
         {!isLoading && !error && quizzes.length > 0 && (
           <div className="grid gap-6 md:grid-cols-2">
             {quizzes.map((quiz) => (
-              <QuizCard key={quiz.id} quiz={quiz} />
+              <QuizCard
+                key={quiz.id}
+                quiz={{ ...quiz, variant: (quiz.variant || "student") as "student" | "teacher" }}
+              />
             ))}
           </div>
         )}

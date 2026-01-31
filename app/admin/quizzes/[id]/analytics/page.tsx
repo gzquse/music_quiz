@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/instant";
-import { Card, CardHeader, CardTitle, CardContent, Button } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from "@/components/ui";
 import { ChartPanel } from "@/components/admin/ChartPanel";
 import { formatDateTime, calculateAverage } from "@/lib/utils";
 
@@ -28,16 +28,70 @@ export default function AnalyticsPage() {
       },
     },
     answers: {},
+    students: {},
+    teachers: {},
+    teacher_student_assignments: {},
   });
 
   const quiz = data?.quizzes?.[0];
   const questions = (data?.questions || []).sort((a, b) => a.order - b.order);
   const responses = data?.responses || [];
   const allAnswers = data?.answers || [];
+  const students = data?.students || [];
+  const teachers = data?.teachers || [];
+  const assignments = data?.teacher_student_assignments || [];
+
+  const getStudentName = (id: string) => students.find((s: { id: string }) => s.id === id)?.name ?? "-";
+  const getTeacherName = (id: string) => teachers.find((t: { id: string }) => t.id === id)?.name ?? "-";
 
   // Filter answers for this quiz's responses
   const responseIds = new Set(responses.map((r) => r.id));
   const answers = allAnswers.filter((a) => responseIds.has(a.responseId));
+
+  const getWeek = (r: { metadata?: { week?: number } }) => (r.metadata as { week?: number } | undefined)?.week;
+
+  // Teacher responses only (for teacher-centric summaries)
+  const teacherResponses = responses.filter((r: { respondentType?: string }) => r.respondentType === "teacher");
+
+  // Get teacher's assigned students
+  const getTeacherStudents = (teacherId: string) =>
+    assignments
+      .filter((a: { teacherId: string }) => a.teacherId === teacherId)
+      .map((a: { studentId: string }) => students.find((s: { id: string }) => s.id === a.studentId))
+      .filter((s): s is { id: string; name: string; createdAt: number } => !!s);
+
+  // For a teacher-student pair, get responses grouped by week
+  const getResponsesByWeek = (teacherId: string, studentId: string) => {
+    const relevant = teacherResponses.filter(
+      (r: { teacherId?: string; studentId?: string }) =>
+        r.teacherId === teacherId && r.studentId === studentId
+    );
+    const byWeek: Record<number, { response: typeof relevant[0]; answers: typeof answers }> = {};
+    for (const r of relevant) {
+      const week = getWeek(r);
+      if (week && !byWeek[week]) {
+        byWeek[week] = {
+          response: r,
+          answers: answers.filter((a: { responseId: string }) => a.responseId === r.id),
+        };
+      }
+    }
+    return byWeek;
+  };
+
+  // Average score for a response's scale questions
+  const getResponseAverage = (responseAnswers: typeof answers, scaleQIds: string[]) => {
+    const vals = responseAnswers
+      .filter((a: { questionId: string }) => scaleQIds.includes(a.questionId))
+      .map((a: { value: string | number }) =>
+        typeof a.value === "number" ? a.value : parseFloat(String(a.value))
+      )
+      .filter((v) => !isNaN(v));
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  };
+
+  const scaleQuestions = questions.filter((q: { type: string }) => q.type === "scale");
+  const scaleQuestionIds = scaleQuestions.map((q: { id: string }) => q.id);
 
   if (isLoading) {
     return (
@@ -58,10 +112,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  // Calculate analytics
-  const scaleQuestions = questions.filter((q) => q.type === "scale");
-  
-  // Average scores per question
+  // Average scores per question (overall)
   const questionAverages = scaleQuestions.map((q) => {
     const questionAnswers = answers
       .filter((a) => a.questionId === q.id)
@@ -118,13 +169,16 @@ export default function AnalyticsPage() {
           </div>
           <h1 className="text-3xl font-bold">Analytics</h1>
         </div>
+        <Link href={`/admin/quizzes/${quizId}/responses`}>
+          <Button variant="secondary">View Responses</Button>
+        </Link>
         <Link href={`/admin/quizzes/${quizId}`}>
           <Button variant="secondary">Edit Survey</Button>
         </Link>
       </div>
 
       {/* Stats */}
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
+      <div className="grid gap-6 md:grid-cols-4 mb-8">
         <Card>
           <CardContent>
             <p className="text-3xl font-bold">{responses.length}</p>
@@ -133,8 +187,14 @@ export default function AnalyticsPage() {
         </Card>
         <Card>
           <CardContent>
-            <p className="text-3xl font-bold">{recentResponses.length}</p>
-            <p className="text-sm text-[var(--muted)]">Last 30 Days</p>
+            <p className="text-3xl font-bold">{responses.filter((r: { respondentType?: string }) => r.respondentType === "student").length}</p>
+            <p className="text-sm text-[var(--muted)]">Student</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <p className="text-3xl font-bold">{responses.filter((r: { respondentType?: string }) => r.respondentType === "teacher").length}</p>
+            <p className="text-sm text-[var(--muted)]">Teacher</p>
           </CardContent>
         </Card>
         <Card>
@@ -170,10 +230,137 @@ export default function AnalyticsPage() {
         </Card>
       ) : (
         <>
+          {/* Teacher Summaries: 4 teachers, each with 8 weeks per student */}
+          {teacherResponses.length > 0 && (
+            <div className="mb-10">
+              <h2 className="text-xl font-semibold mb-6">Teacher Summaries</h2>
+              <div className="space-y-8">
+                {teachers.map((teacher: { id: string; name: string }) => {
+                  const teacherStudents = getTeacherStudents(teacher.id);
+                  if (teacherStudents.length === 0) return null;
+
+                  return (
+                    <Card key={teacher.id}>
+                      <CardHeader>
+                        <CardTitle>{teacher.name}</CardTitle>
+                        <CardDescription>
+                          {teacherStudents.length} student{teacherStudents.length > 1 ? "s" : ""}:{" "}
+                          {teacherStudents.map((s) => s.name).join(", ")}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-6">
+                          {teacherStudents.map((student: { id: string; name: string }) => {
+                            const byWeek = getResponsesByWeek(teacher.id, student.id);
+                            const weekData = [1, 2, 3, 4, 5, 6, 7, 8].map((week) => {
+                              const w = byWeek[week];
+                              const avg = w
+                                ? getResponseAverage(w.answers, scaleQuestionIds)
+                                : null;
+                              return { week, avg, hasData: !!w };
+                            });
+
+                            return (
+                              <div
+                                key={student.id}
+                                className="border border-[var(--border)] rounded-lg p-4"
+                              >
+                                <h3 className="font-semibold mb-3">{student.name}</h3>
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-sm">
+                                    <thead>
+                                      <tr className="border-b border-[var(--border)]">
+                                        <th className="text-left py-2 px-2 font-medium text-[var(--muted)]">
+                                          Week
+                                        </th>
+                                        {scaleQuestions.slice(0, 6).map((q: { order: number }) => (
+                                          <th
+                                            key={q.order}
+                                            className="text-center py-2 px-2 font-medium text-[var(--muted)]"
+                                          >
+                                            Q{q.order + 1}
+                                          </th>
+                                        ))}
+                                        <th className="text-center py-2 px-2 font-medium text-[var(--muted)]">
+                                          Avg
+                                        </th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {weekData.map(({ week, avg, hasData }) => {
+                                        const w = byWeek[week];
+                                        const qVals = scaleQuestionIds.map((qId) => {
+                                          const a = w?.answers?.find(
+                                            (x: { questionId: string }) => x.questionId === qId
+                                          );
+                                          const v =
+                                            typeof a?.value === "number"
+                                              ? a.value
+                                              : parseFloat(String(a?.value ?? ""));
+                                          return isNaN(v) ? null : v;
+                                        });
+                                        const rowAvg =
+                                          qVals.filter((v) => v !== null).length > 0
+                                            ? (
+                                                (qVals.filter((v) => v !== null) as number[]).reduce(
+                                                  (a, b) => a + b,
+                                                  0
+                                                ) / (qVals.filter((v) => v !== null) as number[]).length
+                                              ).toFixed(1)
+                                            : "-";
+
+                                        return (
+                                          <tr
+                                            key={week}
+                                            className="border-b border-[var(--border)] last:border-0"
+                                          >
+                                            <td className="py-2 px-2 font-medium">Week {week}</td>
+                                            {qVals.map((v, i) => (
+                                              <td
+                                                key={i}
+                                                className="text-center py-2 px-2 text-[var(--muted)]"
+                                              >
+                                                {v !== null ? v : "-"}
+                                              </td>
+                                            ))}
+                                            <td className="text-center py-2 px-2 font-medium">
+                                              {rowAvg}
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                {weekData.some((w) => w.hasData) && (
+                                  <div className="mt-3">
+                                    <ChartPanel
+                                      title={`${student.name} - Average by Week`}
+                                      data={weekData
+                                        .filter((w) => w.avg !== null)
+                                        .map((w) => ({
+                                          name: `W${w.week}`,
+                                          value: Number(w.avg?.toFixed(2)),
+                                        }))}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Average Scores Chart */}
           <div className="mb-8">
             <ChartPanel
-              title="Average Score by Question"
+              title="Average Score by Question (All Responses)"
               data={questionAverages}
             />
           </div>
@@ -193,8 +380,11 @@ export default function AnalyticsPage() {
 
           {/* Response Table */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Recent Responses</CardTitle>
+              <Link href={`/admin/quizzes/${quizId}/responses`}>
+                <Button variant="ghost" size="sm">View by Participant</Button>
+              </Link>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -203,6 +393,15 @@ export default function AnalyticsPage() {
                     <tr className="border-b border-[var(--border)]">
                       <th className="text-left py-3 px-4 font-medium text-[var(--muted)]">
                         Date
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-[var(--muted)]">
+                        Type
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-[var(--muted)]">
+                        Student
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-[var(--muted)]">
+                        Teacher
                       </th>
                       {scaleQuestions.slice(0, 6).map((q) => (
                         <th
@@ -223,6 +422,9 @@ export default function AnalyticsPage() {
                         const responseAnswers = answers.filter(
                           (a) => a.responseId === response.id
                         );
+                        const respondentType = response.respondentType ?? "-";
+                        const studentName = response.studentId ? getStudentName(response.studentId) : "-";
+                        const teacherName = response.teacherId ? getTeacherName(response.teacherId) : "-";
                         return (
                           <tr
                             key={response.id}
@@ -231,6 +433,17 @@ export default function AnalyticsPage() {
                             <td className="py-3 px-4 text-[var(--muted)]">
                               {formatDateTime(response.submittedAt)}
                             </td>
+                            <td className="py-3 px-4">
+                              <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
+                                respondentType === "student" ? "bg-[var(--accent)]/10 text-[var(--accent)]" :
+                                respondentType === "teacher" ? "bg-[var(--primary)]/10 text-[var(--primary)]" :
+                                "bg-[var(--muted)]/10 text-[var(--muted)]"
+                              }`}>
+                                {respondentType}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">{studentName}</td>
+                            <td className="py-3 px-4">{teacherName}</td>
                             {scaleQuestions.slice(0, 6).map((q) => {
                               const answer = responseAnswers.find(
                                 (a) => a.questionId === q.id

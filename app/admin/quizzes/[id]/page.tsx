@@ -1,9 +1,10 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { db, type Question } from "@/lib/instant";
 import { QuizBuilder } from "@/components/admin";
-import { Card } from "@/components/ui";
+import { Card, Button } from "@/components/ui";
 
 export default function EditQuizPage() {
   const params = useParams();
@@ -22,7 +23,10 @@ export default function EditQuizPage() {
     },
   });
 
-  const quiz = data?.quizzes?.[0];
+  const rawQuiz = data?.quizzes?.[0];
+  const quiz = rawQuiz
+    ? { ...rawQuiz, variant: (rawQuiz.variant || "student") as "student" | "teacher" }
+    : undefined;
   // Cast questions to proper type (InstantDB returns string for union types)
   const questions = (data?.questions || []).map(q => ({
     ...q,
@@ -50,9 +54,19 @@ export default function EditQuizPage() {
 
   return (
     <div className="p-8 max-w-4xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Edit Survey</h1>
-        <p className="text-[var(--muted)]">Update your survey settings and questions</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Edit Survey</h1>
+          <p className="text-[var(--muted)]">Update your survey settings and questions</p>
+        </div>
+        <div className="flex gap-2">
+          <Link href={`/admin/quizzes/${quizId}/responses`}>
+            <Button variant="secondary">View Responses</Button>
+          </Link>
+          <Link href={`/admin/quizzes/${quizId}/analytics`}>
+            <Button variant="ghost">Analytics</Button>
+          </Link>
+        </div>
       </div>
       <QuizBuilder existingQuiz={quiz} existingQuestions={questions} />
     </div>

@@ -1,16 +1,19 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, Input } from "@/components/ui";
 
 function LoginContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isCredentialsLoading, setIsCredentialsLoading] = useState(false);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -60,6 +63,40 @@ function LoginContent() {
         )}
 
         <div className="space-y-3">
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setIsCredentialsLoading(true);
+              const res = await signIn("credentials", {
+                email,
+                password,
+                callbackUrl: "/admin",
+                redirect: false,
+              });
+              setIsCredentialsLoading(false);
+              if (res?.ok) router.push("/admin");
+              else if (res?.error) router.push("/admin/login?error=CredentialsSignin");
+            }}
+            className="space-y-2 pb-3 border-b border-[var(--border)]"
+          >
+            <Input
+              type="email"
+              placeholder="Admin email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <Input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <Button type="submit" variant="secondary" className="w-full" disabled={isCredentialsLoading}>
+              {isCredentialsLoading ? "Signing in..." : "Sign in with email"}
+            </Button>
+          </form>
           <Button
             onClick={() => signIn("google", { callbackUrl: "/admin" })}
             variant="secondary"

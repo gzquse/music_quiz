@@ -34,6 +34,7 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
       "Extremely",
     ],
     isActive: existingQuiz?.isActive ?? false,
+    variant: (existingQuiz?.variant || "student") as "student" | "teacher",
   });
 
   const [questions, setQuestions] = useState<QuestionDraft[]>(() => {
@@ -98,6 +99,7 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
       await db.transact([
         tx.quizzes[quizId].update({
           ...quiz,
+          variant: quiz.variant || "student",
           createdAt: existingQuiz?.createdAt || now,
         }),
       ]);
@@ -163,7 +165,21 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
             placeholder="Instructions shown at the top of the survey"
           />
 
-          <div className="flex items-center gap-4">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Survey Variant</label>
+              <select
+                value={quiz.variant}
+                onChange={(e) => setQuiz({ ...quiz, variant: e.target.value as "student" | "teacher" })}
+                className="w-full max-w-xs px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]"
+              >
+                <option value="student">Student (self-assessment)</option>
+                <option value="teacher">Teacher (assessment of student)</option>
+              </select>
+              <p className="text-xs text-[var(--muted)] mt-1">
+                {quiz.variant === "student" ? "Students rate their own experience" : "Teachers rate their students"}
+              </p>
+            </div>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"

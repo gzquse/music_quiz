@@ -12,6 +12,7 @@ export type Quiz = {
   scaleLabels: string[];
   isActive: boolean;
   createdAt: number;
+  variant?: "student" | "teacher";
 };
 
 export type Question = {
@@ -24,11 +25,32 @@ export type Question = {
   required: boolean;
 };
 
+export type Student = {
+  id: string;
+  name: string;
+  createdAt: number;
+};
+
+export type Teacher = {
+  id: string;
+  name: string;
+  createdAt: number;
+};
+
+export type TeacherStudentAssignment = {
+  id: string;
+  teacherId: string;
+  studentId: string;
+};
+
 export type Response = {
   id: string;
   quizId: string;
   submittedAt: number;
   metadata: Record<string, unknown>;
+  respondentType?: "student" | "teacher";
+  studentId?: string;
+  teacherId?: string;
 };
 
 export type Answer = {

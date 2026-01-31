@@ -11,6 +11,7 @@ const schema = i.schema({
       scaleLabels: i.json<string[]>(),
       isActive: i.boolean(),
       createdAt: i.number(),
+      variant: i.string().optional(), // "student" | "teacher"
     }),
     questions: i.entity({
       quizId: i.string(),
@@ -20,10 +21,25 @@ const schema = i.schema({
       order: i.number(),
       required: i.boolean(),
     }),
+    students: i.entity({
+      name: i.string(),
+      createdAt: i.number(),
+    }),
+    teachers: i.entity({
+      name: i.string(),
+      createdAt: i.number(),
+    }),
+    teacher_student_assignments: i.entity({
+      teacherId: i.string(),
+      studentId: i.string(),
+    }),
     responses: i.entity({
       quizId: i.string(),
       submittedAt: i.number(),
       metadata: i.json<Record<string, unknown>>(),
+      respondentType: i.string().optional(), // "student" | "teacher"
+      studentId: i.string().optional(), // who the response is about (self for student, target for teacher)
+      teacherId: i.string().optional(), // empty string when respondentType is "student"
     }),
     answers: i.entity({
       responseId: i.string(),
