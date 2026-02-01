@@ -13,6 +13,7 @@ export type Quiz = {
   isActive: boolean;
   createdAt: number;
   variant?: "student" | "teacher";
+  studyStartDate?: number;
 };
 
 export type Question = {

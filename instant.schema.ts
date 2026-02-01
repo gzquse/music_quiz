@@ -12,6 +12,7 @@ const schema = i.schema({
       isActive: i.boolean(),
       createdAt: i.number(),
       variant: i.string().optional(), // "student" | "teacher"
+      studyStartDate: i.number().optional(), // timestamp when Week 1 began (used to calculate week from submission date)
     }),
     questions: i.entity({
       quizId: i.string(),

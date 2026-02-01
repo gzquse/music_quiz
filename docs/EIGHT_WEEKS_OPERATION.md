@@ -112,4 +112,8 @@ https://music-quiz-xi.vercel.app/quiz/TEACHER_QUIZ_ID/teacher/TEACHER_4_ID
 
 ## Week tracking
 
-Responses are grouped by week. The system uses the week stored in response metadata. For seeded data, weeks 1–8 are pre-filled. For new submissions, ensure the app records the current week (e.g. from a week selector or submission date).
+**Study Start Date**: When editing a survey, set "Study Start Date (Week 1)" to the date your 8-week study begins. Week 1 = that date, Week 2 = 7 days later, etc. New submissions are assigned to weeks 1–8 based on the submission date.
+
+**Start from now**: Set Study Start Date to today. All submissions this week will be Week 1; next week will be Week 2, and so on.
+
+Edit the survey in Admin > Quizzes > [survey] > set "Study Start Date" and save.

@@ -20,6 +20,8 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
 
+  const toDateInput = (ts?: number) =>
+    ts ? new Date(ts).toISOString().slice(0, 10) : "";
   const [quiz, setQuiz] = useState({
     title: existingQuiz?.title || "",
     description: existingQuiz?.description || "",
@@ -35,6 +37,9 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
     ],
     isActive: existingQuiz?.isActive ?? false,
     variant: (existingQuiz?.variant || "student") as "student" | "teacher",
+    studyStartDate: existingQuiz?.studyStartDate
+      ? toDateInput(existingQuiz.studyStartDate)
+      : toDateInput(Date.now()),
   });
 
   const [questions, setQuestions] = useState<QuestionDraft[]>(() => {
@@ -95,11 +100,16 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
       const quizId = existingQuiz?.id || genId();
       const now = Date.now();
 
-      // Save quiz
+      const studyStartTs = quiz.studyStartDate
+        ? new Date(quiz.studyStartDate + "T00:00:00").getTime()
+        : undefined;
+
+      const { studyStartDate: _s, ...quizData } = quiz;
       await db.transact([
         tx.quizzes[quizId].update({
-          ...quiz,
+          ...quizData,
           variant: quiz.variant || "student",
+          studyStartDate: studyStartTs,
           createdAt: existingQuiz?.createdAt || now,
         }),
       ]);
@@ -178,6 +188,18 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
               </select>
               <p className="text-xs text-[var(--muted)] mt-1">
                 {quiz.variant === "student" ? "Students rate their own experience" : "Teachers rate their students"}
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Study Start Date (Week 1)</label>
+              <input
+                type="date"
+                value={quiz.studyStartDate}
+                onChange={(e) => setQuiz({ ...quiz, studyStartDate: e.target.value })}
+                className="w-full max-w-xs px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]"
+              />
+              <p className="text-xs text-[var(--muted)] mt-1">
+                Week 1 begins on this date. New submissions are assigned to weeks 1-8 based on this.
               </p>
             </div>
             <label className="flex items-center gap-2 cursor-pointer">

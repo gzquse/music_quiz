@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { db, tx, id as genId, type Question } from "@/lib/instant";
+import { getWeekFromStudyStart } from "@/lib/utils";
 import { QuestionRenderer } from "@/components/quiz";
 import { Button, Card } from "@/components/ui";
 
@@ -47,11 +48,12 @@ export default function TeacherQuizPage() {
     setIsSubmitting(true);
     try {
       const responseId = genId();
+      const week = getWeekFromStudyStart(quiz.studyStartDate);
       await db.transact([
         tx.responses[responseId].update({
           quizId: quiz.id,
           submittedAt: Date.now(),
-          metadata: { userAgent: navigator.userAgent },
+          metadata: { userAgent: navigator.userAgent, week },
           respondentType: "teacher",
           studentId: selectedStudentId,
           teacherId,

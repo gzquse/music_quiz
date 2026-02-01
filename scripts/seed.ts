@@ -102,12 +102,16 @@ async function seed() {
       )
     );
 
+    const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+    const studyStartDate = Date.now() - 8 * MS_PER_WEEK;
+
     // 4. Create student quiz
     console.log("Creating student quiz...");
     const studentQuizId = id();
     await db.transact([
       tx.quizzes[studentQuizId].update({
         title: "Post-Session Playing Experience Survey (Student)",
+        studyStartDate,
         description:
           "Please respond to the questions below based on your own playing experience and physical state at today's lesson.",
         instructions:
@@ -141,6 +145,7 @@ async function seed() {
     await db.transact([
       tx.quizzes[teacherQuizId].update({
         title: "Post-Session Playing Experience Survey (Teacher)",
+        studyStartDate,
         description:
           "Please respond to the questions below based on your observations of your student's physical state and performance at today's lesson.",
         instructions:
@@ -170,11 +175,10 @@ async function seed() {
 
     // 6. Create 8 weeks of student self-assessments (6 students x 8 weeks = 48 responses)
     const WEEKS = 8;
-    const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
     console.log(`Creating ${WEEKS} weeks of student responses...`);
     for (let week = 1; week <= WEEKS; week++) {
-      const weekStart = Date.now() - (WEEKS - week) * MS_PER_WEEK;
+      const weekStart = studyStartDate + (week - 1) * MS_PER_WEEK;
       for (let i = 0; i < 6; i++) {
         const responseId = id();
         const submittedAt = weekStart + i * 60 * 60 * 1000; // spread within week
@@ -211,7 +215,7 @@ async function seed() {
     // 7. Create 8 weeks of teacher assessments (6 assignments x 8 weeks = 48 responses)
     console.log(`Creating ${WEEKS} weeks of teacher responses...`);
     for (let week = 1; week <= WEEKS; week++) {
-      const weekStart = Date.now() - (WEEKS - week) * MS_PER_WEEK;
+      const weekStart = studyStartDate + (week - 1) * MS_PER_WEEK;
       for (const a of assignments) {
         const responseId = id();
         const submittedAt = weekStart + Math.floor(Math.random() * 5) * 60 * 60 * 1000;

@@ -36,6 +36,15 @@ export function calculateAverage(numbers: number[]): number {
   return numbers.reduce((a, b) => a + b, 0) / numbers.length;
 }
 
+const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+export function getWeekFromStudyStart(studyStartDate?: number | null): number {
+  if (!studyStartDate) return 1;
+  const elapsed = Date.now() - studyStartDate;
+  const week = Math.floor(elapsed / MS_PER_WEEK) + 1;
+  return Math.min(8, Math.max(1, week));
+}
+
 // Group array items by a key
 export function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
   return array.reduce((result, item) => {
