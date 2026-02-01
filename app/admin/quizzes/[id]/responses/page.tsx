@@ -14,18 +14,35 @@ export default function ResponsesViewerPage() {
   const [selectedWeek, setSelectedWeek] = useState<number | "all">("all");
 
   const { data, isLoading, error } = db.useQuery({
-    quizzes: { $: { where: { id: quizId } } },
-    questions: { $: { where: { quizId } } },
-    responses: { $: { where: { quizId } } },
+    quizzes: {},
+    questions: {},
+    responses: {},
     answers: {},
     students: {},
     teachers: {},
     teacher_student_assignments: {},
   });
 
-  const quiz = data?.quizzes?.[0];
-  const questions = (data?.questions || []).sort((a: { order: number }, b: { order: number }) => a.order - b.order);
-  const responses = data?.responses || [];
+  const allQuizzes = data?.quizzes || [];
+  const quiz = allQuizzes.find((q: { id: string }) => q.id === quizId);
+  const studentQuiz = allQuizzes.find(
+    (q: { variant?: string; title?: string }) =>
+      q.variant === "student" || (q.title || "").toLowerCase().includes("student")
+  );
+  const allQuestions = data?.questions || [];
+  const questions = allQuestions
+    .filter((q: { quizId: string }) => q.quizId === quizId)
+    .sort((a: { order: number }, b: { order: number }) => a.order - b.order);
+  const studentQuestions = studentQuiz
+    ? allQuestions
+        .filter((q: { quizId: string }) => q.quizId === studentQuiz.id)
+        .sort((a: { order: number }, b: { order: number }) => a.order - b.order)
+    : [];
+  const allResponses = data?.responses || [];
+  const responses = allResponses.filter((r: { quizId: string }) => r.quizId === quizId);
+  const studentResponses = studentQuiz
+    ? allResponses.filter((r: { quizId: string }) => r.quizId === studentQuiz.id)
+    : [];
   const answers = data?.answers || [];
   const students = data?.students || [];
   const teachers = data?.teachers || [];
@@ -35,7 +52,7 @@ export default function ResponsesViewerPage() {
   const textQuestions = questions.filter((q: { type: string }) => q.type === "text");
 
   const getAnswersForResponse = (responseId: string) => {
-    return answers.filter((a: { responseId: string }) => a.responseId === responseId);
+    return (data?.answers || []).filter((a: { responseId: string }) => a.responseId === responseId);
   };
 
   const getAnswerValue = (responseAnswers: { questionId: string; value: string | number }[], questionId: string) => {
@@ -67,16 +84,16 @@ export default function ResponsesViewerPage() {
   };
 
   const getStudentResponse = (studentId: string) => {
-    const studentResponses = responses.filter(
+    const relevant = studentResponses.filter(
       (r: { respondentType?: string; studentId?: string }) =>
         r.respondentType === "student" && r.studentId === studentId
     );
     if (studentResponses.length === 0) return null;
     if (selectedWeek !== "all") {
-      const forWeek = studentResponses.find((r) => getWeek(r) === selectedWeek);
+      const forWeek = relevant.find((r) => getWeek(r) === selectedWeek);
       return forWeek ?? null;
     }
-    return studentResponses.sort(
+    return relevant.sort(
       (a: { submittedAt: number }, b: { submittedAt: number }) => b.submittedAt - a.submittedAt
     )[0];
   };
@@ -86,7 +103,7 @@ export default function ResponsesViewerPage() {
 
   const deleteResponse = async (responseId: string) => {
     if (!confirm("Delete this response? This cannot be undone.")) return;
-    const responseAnswers = answers.filter((a: { responseId: string }) => a.responseId === responseId);
+    const responseAnswers = (data?.answers || []).filter((a: { responseId: string }) => a.responseId === responseId);
     try {
       const txs = [
         ...responseAnswers.map((a: { id: string }) => tx.answers[a.id].delete()),
@@ -120,7 +137,9 @@ export default function ResponsesViewerPage() {
 
   const selectedStudent = selectedStudentId ? students.find((s: { id: string }) => s.id === selectedStudentId) : null;
   const selectedStudentResponse = selectedStudentId ? getStudentResponse(selectedStudentId) : null;
-  const selectedStudentAnswers = selectedStudentResponse ? getAnswersForResponse(selectedStudentResponse.id) : [];
+  const selectedStudentAnswers = selectedStudentResponse
+    ? (data?.answers || []).filter((a: { responseId: string }) => a.responseId === selectedStudentResponse.id)
+    : [];
 
   return (
     <div className="p-8">
@@ -176,15 +195,27 @@ export default function ResponsesViewerPage() {
                       className="border border-[var(--border)] rounded-lg p-4"
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedStudentId(student.id)}
-                          className="font-semibold text-[var(--primary)] hover:underline text-left"
-                        >
-                          {student.name}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStudentId(student.id)}
+                            className="font-semibold text-[var(--primary)] hover:underline text-left"
+                          >
+                            {student.name}
+                          </button>
+                          {studentQuiz && (
+                            <a
+                              href={`${typeof window !== "undefined" ? window.location.origin : ""}/quiz/${studentQuiz.id}/student/${student.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-[var(--muted)] hover:text-[var(--primary)] underline"
+                            >
+                              Test student form
+                            </a>
+                          )}
+                        </div>
                         <span className="text-xs text-[var(--muted)]">
-                          Click to view student self-assessment
+                          Click name to view student self-assessment
                         </span>
                       </div>
 
@@ -295,13 +326,13 @@ export default function ResponsesViewerPage() {
                     </Button>
                   </div>
                   <div className="space-y-4">
-                    {scaleQuestions.map((q: { id: string; order: number; text: string }) => (
+                    {(studentQuestions.filter((q: { type: string }) => q.type === "scale") || []).map((q: { id: string; order: number; text: string }) => (
                       <div key={q.id} className="flex justify-between items-center border-b border-[var(--border)] pb-2">
                         <span className="text-sm">{q.text}</span>
                         <span className="font-medium">{getAnswerValue(selectedStudentAnswers, q.id)}</span>
                       </div>
                     ))}
-                    {textQuestions.map((q: { id: string; text: string }) => {
+                    {(studentQuestions.filter((q: { type: string }) => q.type === "text") || []).map((q: { id: string; text: string }) => {
                       const val = getAnswerValue(selectedStudentAnswers, q.id);
                       if (val === "-" || val === "") return null;
                       return (
@@ -314,7 +345,9 @@ export default function ResponsesViewerPage() {
                   </div>
                 </div>
               ) : (
-                <p className="text-[var(--muted)]">No self-assessment submitted yet</p>
+                <p className="text-[var(--muted)]">
+                  No self-assessment submitted yet. Use &quot;Test student form&quot; to submit one.
+                </p>
               )}
             </div>
           </div>

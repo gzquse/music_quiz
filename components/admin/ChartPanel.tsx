@@ -3,24 +3,29 @@
 import {
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   Cell,
+  Legend,
 } from "recharts";
 
 interface ChartData {
   name: string;
-  value: number;
+  value?: number;
   fill?: string;
+  [key: string]: string | number | undefined;
 }
 
 interface ChartPanelProps {
   title: string;
   data: ChartData[];
-  type?: "bar" | "distribution";
+  type?: "bar" | "distribution" | "line";
+  lineKeys?: string[];
 }
 
 const COLORS = [
@@ -31,12 +36,48 @@ const COLORS = [
   "var(--error)",
 ];
 
-export function ChartPanel({ title, data, type = "bar" }: ChartPanelProps) {
+export function ChartPanel({ title, data, type = "bar", lineKeys }: ChartPanelProps) {
   if (data.length === 0) {
     return (
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6">
         <h3 className="font-semibold mb-4">{title}</h3>
         <p className="text-[var(--muted)] text-center py-8">No data available</p>
+      </div>
+    );
+  }
+
+  if (type === "line") {
+    const keys = lineKeys || (data[0] ? Object.keys(data[0]).filter((k) => k !== "name") : []);
+    return (
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6">
+        <h3 className="font-semibold mb-4">{title}</h3>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="name" stroke="var(--muted)" fontSize={12} />
+              <YAxis stroke="var(--muted)" fontSize={12} domain={[1, 5]} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                }}
+              />
+              <Legend />
+              {keys.map((key, i) => (
+                <Line
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  stroke={COLORS[i % COLORS.length]}
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     );
   }

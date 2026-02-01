@@ -12,30 +12,30 @@ export default function AnalyticsPage() {
   const quizId = params.id as string;
 
   const { data, isLoading, error } = db.useQuery({
-    quizzes: {
-      $: {
-        where: { id: quizId },
-      },
-    },
-    questions: {
-      $: {
-        where: { quizId: quizId },
-      },
-    },
-    responses: {
-      $: {
-        where: { quizId: quizId },
-      },
-    },
+    quizzes: {},
+    questions: {},
+    responses: {},
     answers: {},
     students: {},
     teachers: {},
     teacher_student_assignments: {},
   });
 
-  const quiz = data?.quizzes?.[0];
-  const questions = (data?.questions || []).sort((a, b) => a.order - b.order);
-  const responses = data?.responses || [];
+  const allQuizzes = data?.quizzes || [];
+  const quiz = allQuizzes.find((q: { id: string }) => q.id === quizId);
+  const studentQuiz = allQuizzes.find(
+    (q: { variant?: string; title?: string }) =>
+      q.variant === "student" || (q.title || "").toLowerCase().includes("student")
+  );
+  const allQuestions = data?.questions || [];
+  const questions = allQuestions
+    .filter((q: { quizId: string }) => q.quizId === quizId)
+    .sort((a: { order: number }, b: { order: number }) => a.order - b.order);
+  const allResponses = data?.responses || [];
+  const responses = allResponses.filter((r: { quizId: string }) => r.quizId === quizId);
+  const studentResponses = studentQuiz
+    ? allResponses.filter((r: { quizId: string }) => r.quizId === studentQuiz.id)
+    : [];
   const allAnswers = data?.answers || [];
   const students = data?.students || [];
   const teachers = data?.teachers || [];
@@ -45,8 +45,10 @@ export default function AnalyticsPage() {
   const getTeacherName = (id: string) => teachers.find((t: { id: string }) => t.id === id)?.name ?? "-";
 
   // Filter answers for this quiz's responses
-  const responseIds = new Set(responses.map((r) => r.id));
-  const answers = allAnswers.filter((a) => responseIds.has(a.responseId));
+  const responseIds = new Set(responses.map((r: { id: string }) => r.id));
+  const studentResponseIds = new Set(studentResponses.map((r: { id: string }) => r.id));
+  const answers = allAnswers.filter((a: { responseId: string }) => responseIds.has(a.responseId));
+  const studentAnswers = allAnswers.filter((a: { responseId: string }) => studentResponseIds.has(a.responseId));
 
   const getWeek = (r: { metadata?: { week?: number } }) => (r.metadata as { week?: number } | undefined)?.week;
 
@@ -92,6 +94,30 @@ export default function AnalyticsPage() {
 
   const scaleQuestions = questions.filter((q: { type: string }) => q.type === "scale");
   const scaleQuestionIds = scaleQuestions.map((q: { id: string }) => q.id);
+  const studentScaleQuestions = studentQuiz
+    ? allQuestions
+        .filter((q: { quizId: string; type: string }) => q.quizId === studentQuiz.id && q.type === "scale")
+        .sort((a: { order: number }, b: { order: number }) => a.order - b.order)
+    : [];
+  const studentScaleQuestionIds = studentScaleQuestions.map((q: { id: string }) => q.id);
+
+  const getStudentResponsesByWeek = (studentId: string) => {
+    const relevant = studentResponses.filter(
+      (r: { respondentType?: string; studentId?: string }) =>
+        r.respondentType === "student" && r.studentId === studentId
+    );
+    const byWeek: Record<number, { response: typeof relevant[0]; answers: typeof studentAnswers }> = {};
+    for (const r of relevant) {
+      const week = getWeek(r);
+      if (week && !byWeek[week]) {
+        byWeek[week] = {
+          response: r,
+          answers: studentAnswers.filter((a: { responseId: string }) => a.responseId === r.id),
+        };
+      }
+    }
+    return byWeek;
+  };
 
   const deleteResponse = async (responseId: string) => {
     if (!confirm("Delete this response? This cannot be undone.")) return;
@@ -363,15 +389,68 @@ export default function AnalyticsPage() {
                                   </table>
                                 </div>
                                 {weekData.some((w) => w.hasData) && (
-                                  <div className="mt-3">
+                                  <div className="mt-4 space-y-4">
                                     <ChartPanel
-                                      title={`${student.name} - Average by Week`}
+                                      title={`${student.name} - Score Trend (Teacher view)`}
+                                      type="line"
                                       data={weekData
                                         .filter((w) => w.avg !== null)
                                         .map((w) => ({
-                                          name: `W${w.week}`,
-                                          value: Number(w.avg?.toFixed(2)),
+                                          name: `Week ${w.week}`,
+                                          Teacher: Number(w.avg?.toFixed(2)),
                                         }))}
+                                      lineKeys={["Teacher"]}
+                                    />
+                                    {studentQuiz && (() => {
+                                      const studentByWeek = getStudentResponsesByWeek(student.id);
+                                      const comparisonData = [1, 2, 3, 4, 5, 6, 7, 8].map((week) => {
+                                        const tw = byWeek[week];
+                                        const sw = studentByWeek[week];
+                                        const teacherAvg = tw
+                                          ? getResponseAverage(tw.answers, scaleQuestionIds)
+                                          : null;
+                                        const studentAvg = sw && studentScaleQuestionIds.length
+                                          ? getResponseAverage(sw.answers, studentScaleQuestionIds)
+                                          : null;
+                                        return {
+                                          name: `Week ${week}`,
+                                          Teacher: teacherAvg != null ? Number(teacherAvg.toFixed(2)) : undefined,
+                                          Student: studentAvg != null ? Number(studentAvg.toFixed(2)) : undefined,
+                                        };
+                                      }).filter((d) => d.Teacher != null || d.Student != null);
+                                      return comparisonData.length > 0 ? (
+                                        <ChartPanel
+                                          title={`${student.name} - Teacher vs Student`}
+                                          type="line"
+                                          data={comparisonData}
+                                          lineKeys={["Teacher", "Student"]}
+                                        />
+                                      ) : null;
+                                    })()}
+                                    <ChartPanel
+                                      title={`${student.name} - Q1-Q6 Average (across weeks)`}
+                                      data={scaleQuestionIds.slice(0, 6).map((qId, i) => {
+                                        const vals = Object.values(byWeek)
+                                          .map((w) => {
+                                            const a = w.answers.find(
+                                              (x: { questionId: string }) => x.questionId === qId
+                                            );
+                                            const v =
+                                              typeof a?.value === "number"
+                                                ? a.value
+                                                : parseFloat(String(a?.value ?? ""));
+                                            return isNaN(v) ? null : v;
+                                          })
+                                          .filter((v): v is number => v !== null);
+                                        const avg =
+                                          vals.length > 0
+                                            ? vals.reduce((a, b) => a + b, 0) / vals.length
+                                            : 0;
+                                        return {
+                                          name: `Q${i + 1}`,
+                                          value: Math.round(avg * 10) / 10,
+                                        };
+                                      }).filter((d) => d.value > 0)}
                                     />
                                   </div>
                                 )}
