@@ -65,9 +65,10 @@ async function seed() {
     // 1. Create 6 students
     console.log("Creating students...");
     const studentIds = [id(), id(), id(), id(), id(), id()];
+    const studentNames = ["Seungwon", "Khang", "Jacob", "Belle", "Matthew", "Xinlin"];
     const students = studentIds.map((sid, i) => ({
       id: sid,
-      name: `Student ${i + 1}`,
+      name: studentNames[i] ?? `Student ${i + 1}`,
       createdAt: Date.now(),
     }));
     await db.transact(students.map((s) => tx.students[s.id].update({ name: s.name, createdAt: s.createdAt })));
@@ -75,9 +76,10 @@ async function seed() {
     // 2. Create 4 teachers
     console.log("Creating teachers...");
     const teacherIds = [id(), id(), id(), id()];
+    const teacherNames = ["Prof del Pino", "Dr. Jin", "Dr. Sukhina", "Dr. Cash"];
     const teachers = teacherIds.map((tid, i) => ({
       id: tid,
-      name: `Teacher ${i + 1}`,
+      name: teacherNames[i] ?? `Teacher ${i + 1}`,
       createdAt: Date.now(),
     }));
     await db.transact(teachers.map((t) => tx.teachers[t.id].update({ name: t.name, createdAt: t.createdAt })));

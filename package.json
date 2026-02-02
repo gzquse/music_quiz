@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
-    "clear-demo": "tsx scripts/clear-demo.ts"
+    "clear-demo": "tsx scripts/clear-demo.ts",
+    "update-names": "tsx scripts/update-names.ts"
   },
   "dependencies": {
     "@instantdb/admin": "^0.22.96",
