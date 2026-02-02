@@ -9,7 +9,8 @@
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
     "clear-demo": "tsx scripts/clear-demo.ts",
-    "update-names": "tsx scripts/update-names.ts"
+    "update-names": "tsx scripts/update-names.ts",
+    "clear-participants": "tsx scripts/clear-participants.ts"
   },
   "dependencies": {
     "@instantdb/admin": "^0.22.96",
