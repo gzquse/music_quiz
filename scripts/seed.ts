@@ -23,7 +23,7 @@ if (!APP_ID || !ADMIN_TOKEN) {
 // Initialize InstantDB Admin
 const db = init({ appId: APP_ID, adminToken: ADMIN_TOKEN });
 
-// Student version questions (from Survey questions Student ver)
+// Student version questions (recovered from Survey questions Student ver .docx)
 const studentQuestions = [
   { text: "I was aware of my body and movement during my lesson today.", type: "scale" as const, order: 0, required: true },
   { text: "My body was physically free and relaxed while playing during today's lesson.", type: "scale" as const, order: 1, required: true },
@@ -36,7 +36,7 @@ const studentQuestions = [
   { text: "Today's session included a guided warm-up", type: "choice" as const, options: ["Yes", "No"], order: 8, required: true },
 ];
 
-// Teacher version questions (from Survey questions Teacher Ver)
+// Teacher version questions (recovered from Survey questions Teacher Ver .docx)
 const teacherQuestions = [
   { text: "My student was aware of his/her body and movement during the lesson today.", type: "scale" as const, order: 0, required: true },
   { text: "My student's body was physically free and relaxed while playing during today's lesson.", type: "scale" as const, order: 1, required: true },
@@ -112,12 +112,12 @@ async function seed() {
     const studentQuizId = id();
     await db.transact([
       tx.quizzes[studentQuizId].update({
-        title: "Post-Session Playing Experience Survey (Student)",
+        title: "Post-Session Playing Experience Survey (Student Ver)",
         studyStartDate,
         description:
-          "Please respond to the questions below based on your own playing experience and physical state at today's lesson.",
+          "Please respond to the questions below based on your own playing experience and physical state at today's lesson. Please respond within 24 hours of receipt of the survey.",
         instructions:
-          "Please respond based on your own playing experience and physical state at today's lesson.\n\nScale:\n1 = Not at all\n2 = Slightly\n3 = Moderately\n4 = Very\n5 = Extremely",
+          "Please respond to the questions below based on your own playing experience and physical state at today's lesson. Please respond within 24 hours of receipt of the survey.\n\nScale:\n1 = Not at all\n2 = Slightly\n3 = Moderately\n4 = Very\n5 = Extremely",
         scaleMin: 1,
         scaleMax: 5,
         scaleLabels: ["Not at all", "Slightly", "Moderately", "Very", "Extremely"],
@@ -146,12 +146,12 @@ async function seed() {
     const teacherQuizId = id();
     await db.transact([
       tx.quizzes[teacherQuizId].update({
-        title: "Post-Session Playing Experience Survey (Teacher)",
+        title: "Post-Session Playing Experience Survey (Teacher Ver)",
         studyStartDate,
         description:
-          "Please respond to the questions below based on your observations of your student's physical state and performance at today's lesson.",
+          "Please respond to the questions below based on your observations of your student's physical state and performance at today's lesson. Please respond within 24 hours of receipt of the survey.",
         instructions:
-          "Please respond based on your observations of your student's physical state at today's lesson.\n\nScale:\n1 = Not at all\n2 = Slightly\n3 = Moderately\n4 = Very\n5 = Extremely",
+          "Please respond to the questions below based on your observations of your student's physical state and performance at today's lesson. Please respond within 24 hours of receipt of the survey.\n\nScale:\n1 = Not at all\n2 = Slightly\n3 = Moderately\n4 = Very\n5 = Extremely",
         scaleMin: 1,
         scaleMax: 5,
         scaleLabels: ["Not at all", "Slightly", "Moderately", "Very", "Extremely"],
