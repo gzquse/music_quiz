@@ -11,7 +11,8 @@
     "clear-demo": "tsx scripts/clear-demo.ts",
     "update-names": "tsx scripts/update-names.ts",
     "clear-participants": "tsx scripts/clear-participants.ts",
-    "recover-surveys": "tsx scripts/recover-surveys.ts"
+    "recover-surveys": "tsx scripts/recover-surveys.ts",
+    "seed-participants": "tsx scripts/seed-participants.ts"
   },
   "dependencies": {
     "@instantdb/admin": "^0.22.96",
