@@ -66,7 +66,7 @@ export default function ResponsesViewerPage() {
       .map((a: { studentId: string }) => students.find((s: { id: string }) => s.id === a.studentId))
       .filter((s): s is { id: string; name: string; createdAt: number } => !!s);
 
-  const teacherStudyStart = quiz.studyStartDate;
+  const teacherStudyStart = quiz?.studyStartDate;
   const studentStudyStart = studentQuiz?.studyStartDate ?? teacherStudyStart;
   const getWeek = (r: { submittedAt: number; metadata?: { week?: number } }, studyStart?: number | null) =>
     getWeekFromResponse(r, studyStart);

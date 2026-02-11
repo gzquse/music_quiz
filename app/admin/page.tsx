@@ -125,6 +125,23 @@ export default function AdminDashboardPage() {
         </Card>
       </div>
 
+      {/* Week-wise Analytics quick link */}
+      {teacherQuiz && responses.length > 0 && (
+        <Card className="mb-8">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Week-wise Analytics</CardTitle>
+              <p className="text-sm text-[var(--muted)] mt-1">
+                View Teacher Summaries, score trends, and week-by-week responses.
+              </p>
+            </div>
+            <Link href={`/admin/quizzes/${teacherQuiz.id}/analytics`}>
+              <Button>View Analytics</Button>
+            </Link>
+          </CardHeader>
+        </Card>
+      )}
+
       {/* Survey links - all 10 participant links */}
       {studentQuiz && teacherQuiz && (students.length > 0 || teachers.length > 0) && (
         <Card className="mb-8">

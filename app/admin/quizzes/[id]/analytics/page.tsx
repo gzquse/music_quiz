@@ -50,7 +50,7 @@ export default function AnalyticsPage() {
   const answers = allAnswers.filter((a: { responseId: string }) => responseIds.has(a.responseId));
   const studentAnswers = allAnswers.filter((a: { responseId: string }) => studentResponseIds.has(a.responseId));
 
-  const teacherStudyStart = quiz.studyStartDate;
+  const teacherStudyStart = quiz?.studyStartDate;
   const studentStudyStart = studentQuiz?.studyStartDate ?? teacherStudyStart;
   const getWeek = (r: { submittedAt: number; metadata?: { week?: number } }, studyStart?: number | null) =>
     getWeekFromResponse(r, studyStart);
@@ -220,6 +220,17 @@ export default function AnalyticsPage() {
           <Button variant="secondary">Edit Survey</Button>
         </Link>
       </div>
+
+      {/* Study Start Date banner */}
+      {!teacherStudyStart && responses.length > 0 && (
+        <Card className="mb-6 border-[var(--accent)]/50 bg-[var(--accent)]/5">
+          <CardContent className="py-4">
+            <p className="text-sm">
+              <strong>Set Study Start Date</strong> in Edit Survey to enable week labels (e.g. Week 1 (Feb 1-7)) and correct week derivation for all responses. Use the date when Week 1 began.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       <div className="grid gap-6 md:grid-cols-4 mb-8">
