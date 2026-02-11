@@ -50,7 +50,7 @@ export default function AnalyticsPage() {
   const answers = allAnswers.filter((a: { responseId: string }) => responseIds.has(a.responseId));
   const studentAnswers = allAnswers.filter((a: { responseId: string }) => studentResponseIds.has(a.responseId));
 
-  const teacherStudyStart = quiz?.studyStartDate;
+  const teacherStudyStart = quiz ? quiz.studyStartDate : undefined;
   const studentStudyStart = studentQuiz?.studyStartDate ?? teacherStudyStart;
   const getWeek = (r: { submittedAt: number; metadata?: { week?: number } }, studyStart?: number | null) =>
     getWeekFromResponse(r, studyStart);
