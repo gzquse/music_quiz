@@ -49,6 +49,13 @@ export default function TeacherQuizPage() {
     try {
       const responseId = genId();
       const week = getWeekFromStudyStart(quiz.studyStartDate);
+      const answerTxs = Object.entries(answers).map(([questionId, value]) =>
+        tx.answers[genId()].update({
+          responseId,
+          questionId,
+          value,
+        })
+      );
       await db.transact([
         tx.responses[responseId].update({
           quizId: quiz.id,
@@ -58,15 +65,8 @@ export default function TeacherQuizPage() {
           studentId: selectedStudentId,
           teacherId,
         }),
+        ...answerTxs,
       ]);
-      const answerTxs = Object.entries(answers).map(([questionId, value]) =>
-        tx.answers[genId()].update({
-          responseId,
-          questionId,
-          value,
-        })
-      );
-      await db.transact(answerTxs);
       setIsSubmitted(true);
     } catch (err) {
       console.error("Failed to submit:", err);
