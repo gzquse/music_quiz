@@ -39,7 +39,10 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
     variant: (existingQuiz?.variant || "student") as "student" | "teacher",
     studyStartDate: existingQuiz?.studyStartDate
       ? toDateInput(existingQuiz.studyStartDate)
-      : toDateInput(Date.now()),
+      : (() => {
+          const d = new Date();
+          return `${d.getFullYear()}-02-01`;
+        })(),
   });
 
   const [questions, setQuestions] = useState<QuestionDraft[]>(() => {

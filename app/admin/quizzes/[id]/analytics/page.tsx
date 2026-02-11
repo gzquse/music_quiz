@@ -5,7 +5,7 @@ import Link from "next/link";
 import { db, tx } from "@/lib/instant";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from "@/components/ui";
 import { ChartPanel } from "@/components/admin/ChartPanel";
-import { formatDateTime, calculateAverage } from "@/lib/utils";
+import { formatDateTime, calculateAverage, getWeekFromResponse, formatWeekLabel } from "@/lib/utils";
 
 export default function AnalyticsPage() {
   const params = useParams();
@@ -50,7 +50,10 @@ export default function AnalyticsPage() {
   const answers = allAnswers.filter((a: { responseId: string }) => responseIds.has(a.responseId));
   const studentAnswers = allAnswers.filter((a: { responseId: string }) => studentResponseIds.has(a.responseId));
 
-  const getWeek = (r: { metadata?: { week?: number } }) => (r.metadata as { week?: number } | undefined)?.week;
+  const teacherStudyStart = quiz.studyStartDate;
+  const studentStudyStart = studentQuiz?.studyStartDate ?? teacherStudyStart;
+  const getWeek = (r: { submittedAt: number; metadata?: { week?: number } }, studyStart?: number | null) =>
+    getWeekFromResponse(r, studyStart);
 
   // Teacher responses only (for teacher-centric summaries)
   const teacherResponses = responses.filter((r: { respondentType?: string }) => r.respondentType === "teacher");
@@ -70,7 +73,7 @@ export default function AnalyticsPage() {
     );
     const byWeek: Record<number, { response: typeof relevant[0]; answers: typeof answers }> = {};
     for (const r of relevant) {
-      const week = getWeek(r);
+      const week = getWeek(r, teacherStudyStart);
       if (week && !byWeek[week]) {
         byWeek[week] = {
           response: r,
@@ -108,7 +111,7 @@ export default function AnalyticsPage() {
     );
     const byWeek: Record<number, { response: typeof relevant[0]; answers: typeof studentAnswers }> = {};
     for (const r of relevant) {
-      const week = getWeek(r);
+      const week = getWeek(r, studentStudyStart);
       if (week && !byWeek[week]) {
         byWeek[week] = {
           response: r,
@@ -358,7 +361,7 @@ export default function AnalyticsPage() {
                                             key={week}
                                             className="border-b border-[var(--border)] last:border-0"
                                           >
-                                            <td className="py-2 px-2 font-medium">Week {week}</td>
+                                            <td className="py-2 px-2 font-medium">{formatWeekLabel(week, teacherStudyStart)}</td>
                                             {qVals.map((v, i) => (
                                               <td
                                                 key={i}
@@ -396,7 +399,7 @@ export default function AnalyticsPage() {
                                       data={weekData
                                         .filter((w) => w.avg !== null)
                                         .map((w) => ({
-                                          name: `Week ${w.week}`,
+                                          name: formatWeekLabel(w.week, teacherStudyStart),
                                           Teacher: Number(w.avg?.toFixed(2)),
                                         }))}
                                       lineKeys={["Teacher"]}
@@ -413,7 +416,7 @@ export default function AnalyticsPage() {
                                           ? getResponseAverage(sw.answers, studentScaleQuestionIds)
                                           : null;
                                         return {
-                                          name: `Week ${week}`,
+                                          name: formatWeekLabel(week, teacherStudyStart),
                                           Teacher: teacherAvg != null ? Number(teacherAvg.toFixed(2)) : undefined,
                                           Student: studentAvg != null ? Number(studentAvg.toFixed(2)) : undefined,
                                         };
@@ -504,6 +507,9 @@ export default function AnalyticsPage() {
                         Date
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-[var(--muted)]">
+                        Week
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-[var(--muted)]">
                         Type
                       </th>
                       <th className="text-left py-3 px-4 font-medium text-[var(--muted)]">
@@ -542,6 +548,13 @@ export default function AnalyticsPage() {
                           >
                             <td className="py-3 px-4 text-[var(--muted)]">
                               {formatDateTime(response.submittedAt)}
+                            </td>
+                            <td className="py-3 px-4 text-[var(--muted)]">
+                              {(() => {
+                                const studyStart = response.respondentType === "student" ? studentStudyStart : teacherStudyStart;
+                                const week = getWeek(response, studyStart);
+                                return week ? formatWeekLabel(week, studyStart) : "-";
+                              })()}
                             </td>
                             <td className="py-3 px-4">
                               <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${

@@ -36,13 +36,35 @@ export function calculateAverage(numbers: number[]): number {
   return numbers.reduce((a, b) => a + b, 0) / numbers.length;
 }
 
-const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+export const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
 export function getWeekFromStudyStart(studyStartDate?: number | null): number {
   if (!studyStartDate) return 1;
   const elapsed = Date.now() - studyStartDate;
   const week = Math.floor(elapsed / MS_PER_WEEK) + 1;
   return Math.min(8, Math.max(1, week));
+}
+
+/** Derive week (1-8) from response. Uses metadata.week when present; otherwise derives from submittedAt and studyStartDate (Feb 1 = Week 1). */
+export function getWeekFromResponse(
+  response: { submittedAt: number; metadata?: { week?: number } },
+  studyStartDate?: number | null
+): number | undefined {
+  const stored = (response.metadata as { week?: number } | undefined)?.week;
+  if (stored != null && stored >= 1 && stored <= 8) return stored;
+  if (!studyStartDate) return undefined;
+  const elapsed = response.submittedAt - studyStartDate;
+  const week = Math.floor(elapsed / MS_PER_WEEK) + 1;
+  return Math.min(8, Math.max(1, week));
+}
+
+/** Format week label with date range (e.g. "Week 1 (Feb 1-7)"). */
+export function formatWeekLabel(week: number, studyStartDate?: number | null): string {
+  if (!studyStartDate) return `Week ${week}`;
+  const start = new Date(studyStartDate + (week - 1) * MS_PER_WEEK);
+  const end = new Date(studyStartDate + week * MS_PER_WEEK - 1);
+  const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `Week ${week} (${fmt(start)}-${fmt(end)})`;
 }
 
 // Group array items by a key

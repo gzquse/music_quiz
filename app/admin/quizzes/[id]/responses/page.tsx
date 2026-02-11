@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { db, tx } from "@/lib/instant";
 import { Card, Button } from "@/components/ui";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, getWeekFromResponse, formatWeekLabel } from "@/lib/utils";
 
 export default function ResponsesViewerPage() {
   const params = useParams();
@@ -66,7 +66,10 @@ export default function ResponsesViewerPage() {
       .map((a: { studentId: string }) => students.find((s: { id: string }) => s.id === a.studentId))
       .filter((s): s is { id: string; name: string; createdAt: number } => !!s);
 
-  const getWeek = (r: { metadata?: { week?: number } }) => (r.metadata as { week?: number } | undefined)?.week;
+  const teacherStudyStart = quiz.studyStartDate;
+  const studentStudyStart = studentQuiz?.studyStartDate ?? teacherStudyStart;
+  const getWeek = (r: { submittedAt: number; metadata?: { week?: number } }, studyStart?: number | null) =>
+    getWeekFromResponse(r, studyStart);
 
   const getTeacherResponse = (teacherId: string, studentId: string) => {
     const teacherResponses = responses.filter(
@@ -75,7 +78,7 @@ export default function ResponsesViewerPage() {
     );
     if (teacherResponses.length === 0) return null;
     if (selectedWeek !== "all") {
-      const forWeek = teacherResponses.find((r) => getWeek(r) === selectedWeek);
+      const forWeek = teacherResponses.find((r) => getWeek(r, teacherStudyStart) === selectedWeek);
       return forWeek ?? null;
     }
     return teacherResponses.sort(
@@ -90,7 +93,7 @@ export default function ResponsesViewerPage() {
     );
     if (studentResponses.length === 0) return null;
     if (selectedWeek !== "all") {
-      const forWeek = relevant.find((r) => getWeek(r) === selectedWeek);
+      const forWeek = relevant.find((r) => getWeek(r, studentStudyStart) === selectedWeek);
       return forWeek ?? null;
     }
     return relevant.sort(
@@ -163,7 +166,7 @@ export default function ResponsesViewerPage() {
             >
               <option value="all">All (latest)</option>
               {[1, 2, 3, 4, 5, 6, 7, 8].map((w) => (
-                <option key={w} value={w}>Week {w}</option>
+                <option key={w} value={w}>{formatWeekLabel(w, teacherStudyStart)}</option>
               ))}
             </select>
           </div>
