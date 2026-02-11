@@ -36,7 +36,8 @@ export function calculateAverage(numbers: number[]): number {
   return numbers.reduce((a, b) => a + b, 0) / numbers.length;
 }
 
-export const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+// Week 1 = Feb 1-8 (8 days), Week 2 = Feb 9-16, etc.
+export const MS_PER_WEEK = 8 * 24 * 60 * 60 * 1000;
 
 export function getWeekFromStudyStart(studyStartDate?: number | null): number {
   if (!studyStartDate) return 1;
