@@ -46,17 +46,19 @@ export function getWeekFromStudyStart(studyStartDate?: number | null): number {
   return Math.min(8, Math.max(1, week));
 }
 
-/** Derive week (1-8) from response. Uses metadata.week when present; otherwise derives from submittedAt and studyStartDate (Feb 1 = Week 1). */
+/** Derive week (1-8) from response. Prefer derived from submittedAt + studyStartDate so display matches actual date; fall back to metadata.week only when studyStartDate is unset. */
 export function getWeekFromResponse(
   response: { submittedAt: number; metadata?: { week?: number } },
   studyStartDate?: number | null
 ): number | undefined {
+  if (studyStartDate) {
+    const elapsed = response.submittedAt - studyStartDate;
+    const week = Math.floor(elapsed / MS_PER_WEEK) + 1;
+    return Math.min(8, Math.max(1, week));
+  }
   const stored = (response.metadata as { week?: number } | undefined)?.week;
   if (stored != null && stored >= 1 && stored <= 8) return stored;
-  if (!studyStartDate) return undefined;
-  const elapsed = response.submittedAt - studyStartDate;
-  const week = Math.floor(elapsed / MS_PER_WEEK) + 1;
-  return Math.min(8, Math.max(1, week));
+  return undefined;
 }
 
 /** Format week label with date range (e.g. "Week 1 (Feb 1-7)"). */
