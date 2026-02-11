@@ -5,7 +5,7 @@ import Link from "next/link";
 import { db, tx } from "@/lib/instant";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from "@/components/ui";
 import { ChartPanel } from "@/components/admin/ChartPanel";
-import { formatDateTime, calculateAverage, getWeekFromResponse, formatWeekLabel } from "@/lib/utils";
+import { formatDateTime, calculateAverage, getWeekFromResponse, formatWeekLabel, getScaleAnswerValues } from "@/lib/utils";
 
 export default function AnalyticsPage() {
   const params = useParams();
@@ -84,7 +84,7 @@ export default function AnalyticsPage() {
     return byWeek;
   };
 
-  // Average score for a response's scale questions
+  // Average score for a response's scale questions (with positional fallback for orphaned questionIds)
   const getResponseAverage = (responseAnswers: typeof answers, scaleQIds: string[]) => {
     const vals = responseAnswers
       .filter((a: { questionId: string }) => scaleQIds.includes(a.questionId))
@@ -92,7 +92,10 @@ export default function AnalyticsPage() {
         typeof a.value === "number" ? a.value : parseFloat(String(a.value))
       )
       .filter((v) => !isNaN(v));
-    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    if (vals.length > 0) return vals.reduce((a, b) => a + b, 0) / vals.length;
+    const positional = getScaleAnswerValues(responseAnswers, scaleQIds)
+      .filter((v): v is number => typeof v === "number");
+    return positional.length ? positional.reduce((a, b) => a + b, 0) / positional.length : null;
   };
 
   const scaleQuestions = questions.filter((q: { type: string }) => q.type === "scale");
@@ -156,37 +159,38 @@ export default function AnalyticsPage() {
     );
   }
 
-  // Average scores per question (overall)
-  const questionAverages = scaleQuestions.map((q) => {
-    const questionAnswers = answers
-      .filter((a) => a.questionId === q.id)
-      .map((a) => (typeof a.value === "number" ? a.value : parseFloat(String(a.value))))
-      .filter((v) => !isNaN(v));
-    
+  // Build per-response scale values (with positional fallback for orphaned questionIds)
+  const scaleQIds = scaleQuestionIds.slice(0, 6);
+  const responseScaleValues = responses.map((r) => {
+    const responseAnswers = answers.filter((a: { responseId: string }) => a.responseId === r.id);
+    return getScaleAnswerValues(responseAnswers, scaleQIds);
+  });
+
+  // Average scores per question (overall) - uses positional fallback when questionIds don't match
+  const questionAverages = scaleQuestions.slice(0, 6).map((q, i) => {
+    const values = responseScaleValues
+      .map((vals) => vals[i])
+      .filter((v): v is number => typeof v === "number");
     return {
       name: `Q${q.order + 1}`,
       fullName: q.text,
-      value: parseFloat(calculateAverage(questionAnswers).toFixed(2)),
-      count: questionAnswers.length,
+      value: values.length ? parseFloat(calculateAverage(values).toFixed(2)) : 0,
+      count: values.length,
     };
   });
 
-  // Distribution for each scale question
-  const questionDistributions = scaleQuestions.map((q) => {
-    const questionAnswers = answers.filter((a) => a.questionId === q.id);
+  // Distribution for each scale question - uses positional fallback
+  const questionDistributions = scaleQuestions.slice(0, 6).map((q, qIndex) => {
     const distribution: Record<number, number> = {};
-    
     for (let i = quiz.scaleMin; i <= quiz.scaleMax; i++) {
       distribution[i] = 0;
     }
-    
-    questionAnswers.forEach((a) => {
-      const val = typeof a.value === "number" ? a.value : parseInt(String(a.value));
-      if (distribution[val] !== undefined) {
+    responseScaleValues.forEach((vals) => {
+      const val = vals[qIndex];
+      if (typeof val === "number" && distribution[val] !== undefined) {
         distribution[val]++;
       }
     });
-
     return {
       question: q,
       data: Object.entries(distribution).map(([score, count]) => ({
@@ -347,15 +351,13 @@ export default function AnalyticsPage() {
                                     <tbody>
                                       {weekData.map(({ week, avg, hasData }) => {
                                         const w = byWeek[week];
-                                        const qVals = scaleQuestionIds.map((qId) => {
-                                          const a = w?.answers?.find(
-                                            (x: { questionId: string }) => x.questionId === qId
-                                          );
-                                          const v =
-                                            typeof a?.value === "number"
-                                              ? a.value
-                                              : parseFloat(String(a?.value ?? ""));
-                                          return isNaN(v) ? null : v;
+                                        const scaleIds = scaleQuestionIds.slice(0, 6);
+                                        const positionalVals = w?.answers
+                                          ? getScaleAnswerValues(w.answers, scaleIds)
+                                          : scaleIds.map(() => "-");
+                                        const qVals = scaleIds.map((_, i) => {
+                                          const v = positionalVals[i];
+                                          return typeof v === "number" ? v : null;
                                         });
                                         const rowAvg =
                                           qVals.filter((v) => v !== null).length > 0
@@ -443,17 +445,12 @@ export default function AnalyticsPage() {
                                     })()}
                                     <ChartPanel
                                       title={`${student.name} - Q1-Q6 Average (across weeks)`}
-                                      data={scaleQuestionIds.slice(0, 6).map((qId, i) => {
+                                      data={scaleQuestionIds.slice(0, 6).map((_, i) => {
                                         const vals = Object.values(byWeek)
                                           .map((w) => {
-                                            const a = w.answers.find(
-                                              (x: { questionId: string }) => x.questionId === qId
-                                            );
-                                            const v =
-                                              typeof a?.value === "number"
-                                                ? a.value
-                                                : parseFloat(String(a?.value ?? ""));
-                                            return isNaN(v) ? null : v;
+                                            const positional = getScaleAnswerValues(w.answers, scaleQuestionIds.slice(0, 6));
+                                            const v = positional[i];
+                                            return typeof v === "number" ? v : null;
                                           })
                                           .filter((v): v is number => v !== null);
                                         const avg =
@@ -578,19 +575,14 @@ export default function AnalyticsPage() {
                             </td>
                             <td className="py-3 px-4">{studentName}</td>
                             <td className="py-3 px-4">{teacherName}</td>
-                            {scaleQuestions.slice(0, 6).map((q) => {
-                              const answer = responseAnswers.find(
-                                (a) => a.questionId === q.id
-                              );
-                              return (
-                                <td
-                                  key={q.id}
-                                  className="py-3 px-2 text-center"
-                                >
-                                  {answer?.value ?? "-"}
-                                </td>
-                              );
-                            })}
+                            {getScaleAnswerValues(responseAnswers, scaleQIds).map((val, i) => (
+                              <td
+                                key={scaleQuestions[i]?.id ?? i}
+                                className="py-3 px-2 text-center"
+                              >
+                                {val ?? "-"}
+                              </td>
+                            ))}
                             <td className="py-3 px-4 text-right">
                               <Button
                                 variant="ghost"

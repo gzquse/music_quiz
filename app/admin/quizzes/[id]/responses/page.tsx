@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { db, tx } from "@/lib/instant";
 import { Card, Button } from "@/components/ui";
-import { formatDateTime, getWeekFromResponse, formatWeekLabel } from "@/lib/utils";
+import { formatDateTime, getWeekFromResponse, formatWeekLabel, getScaleAnswerValues } from "@/lib/utils";
 
 export default function ResponsesViewerPage() {
   const params = useParams();
@@ -240,16 +240,20 @@ export default function ResponsesViewerPage() {
                             </Button>
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-sm">
-                            {scaleQuestions.slice(0, 6).map((q: { id: string; order: number; text: string }) => (
-                              <div key={q.id} className="bg-[var(--surface-hover)] rounded px-2 py-1">
-                                <div className="text-[var(--muted)] truncate" title={q.text}>
-                                  Q{q.order + 1}
+                            {(() => {
+                              const scaleQIds = scaleQuestions.slice(0, 6).map((sq: { id: string }) => sq.id);
+                              const values = getScaleAnswerValues(responseAnswers, scaleQIds);
+                              return scaleQuestions.slice(0, 6).map((q: { id: string; order: number; text: string }, i: number) => (
+                                <div key={q.id} className="bg-[var(--surface-hover)] rounded px-2 py-1">
+                                  <div className="text-[var(--muted)] truncate" title={q.text}>
+                                    Q{q.order + 1}
+                                  </div>
+                                  <div className="font-medium">
+                                    {values[i] ?? "-"}
+                                  </div>
                                 </div>
-                                <div className="font-medium">
-                                  {getAnswerValue(responseAnswers, q.id)}
-                                </div>
-                              </div>
-                            ))}
+                              ));
+                            })()}
                           </div>
                           {textQuestions.length > 0 && (
                             <div className="mt-2 text-sm">
@@ -329,12 +333,17 @@ export default function ResponsesViewerPage() {
                     </Button>
                   </div>
                   <div className="space-y-4">
-                    {(studentQuestions.filter((q: { type: string }) => q.type === "scale") || []).map((q: { id: string; order: number; text: string }) => (
-                      <div key={q.id} className="flex justify-between items-center border-b border-[var(--border)] pb-2">
-                        <span className="text-sm">{q.text}</span>
-                        <span className="font-medium">{getAnswerValue(selectedStudentAnswers, q.id)}</span>
-                      </div>
-                    ))}
+                    {(() => {
+                      const studentScaleQs = studentQuestions.filter((q: { type: string }) => q.type === "scale");
+                      const scaleQIds = studentScaleQs.map((sq: { id: string }) => sq.id);
+                      const values = getScaleAnswerValues(selectedStudentAnswers, scaleQIds);
+                      return studentScaleQs.map((q: { id: string; order: number; text: string }, i: number) => (
+                        <div key={q.id} className="flex justify-between items-center border-b border-[var(--border)] pb-2">
+                          <span className="text-sm">{q.text}</span>
+                          <span className="font-medium">{values[i] ?? getAnswerValue(selectedStudentAnswers, q.id)}</span>
+                        </div>
+                      ));
+                    })()}
                     {(studentQuestions.filter((q: { type: string }) => q.type === "text") || []).map((q: { id: string; text: string }) => {
                       const val = getAnswerValue(selectedStudentAnswers, q.id);
                       if (val === "-" || val === "") return null;

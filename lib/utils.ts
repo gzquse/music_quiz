@@ -67,6 +67,27 @@ export function formatWeekLabel(week: number, studyStartDate?: number | null): s
   return `Week ${week} (${fmt(start)}-${fmt(end)})`;
 }
 
+/** Get scale answer values (Q1-Q6) with fallback when questionIds don't match (e.g. after quiz was edited).
+ * First tries direct questionId match; if that yields no values, uses positional match for numeric answers. */
+export function getScaleAnswerValues(
+  responseAnswers: { questionId: string; value: string | number }[],
+  scaleQuestionIds: string[]
+): (string | number)[] {
+  const byId = scaleQuestionIds.map((qId) => {
+    const a = responseAnswers.find((x) => x.questionId === qId);
+    return a?.value ?? "-";
+  });
+  const hasAny = byId.some((v) => v !== "-");
+  if (hasAny) return byId;
+
+  const numericAnswers = responseAnswers
+    .filter((a) => typeof a.value === "number" && a.value >= 1 && a.value <= 10)
+    .sort((a, b) => a.questionId.localeCompare(b.questionId))
+    .map((a) => a.value as number);
+
+  return scaleQuestionIds.map((_, i) => (numericAnswers[i] != null ? numericAnswers[i] : "-"));
+}
+
 // Group array items by a key
 export function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
   return array.reduce((result, item) => {
