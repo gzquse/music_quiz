@@ -36,13 +36,30 @@ export function calculateAverage(numbers: number[]): number {
   return numbers.reduce((a, b) => a + b, 0) / numbers.length;
 }
 
-// Week 1 = Feb 1-8 (8 days), Week 2 = Feb 9-16, etc.
-export const MS_PER_WEEK = 8 * 24 * 60 * 60 * 1000;
+// Week 1 = Feb 1-8 (8 days), Week 2 = Feb 9-15 (7 days), Week 3 = Feb 16-22 (7 days), etc.
+const MS_WEEK_1 = 8 * 24 * 60 * 60 * 1000;
+const MS_WEEK_2_PLUS = 7 * 24 * 60 * 60 * 1000;
+export const MS_PER_WEEK = MS_WEEK_2_PLUS; // for formatWeekLabel compatibility
+
+function getWeekFromElapsed(elapsedMs: number): number {
+  if (elapsedMs < MS_WEEK_1) return 1;
+  return Math.floor((elapsedMs - MS_WEEK_1) / MS_WEEK_2_PLUS) + 2;
+}
+
+function getElapsedToWeekStart(week: number): number {
+  if (week <= 1) return 0;
+  return MS_WEEK_1 + (week - 2) * MS_WEEK_2_PLUS;
+}
+
+function getElapsedToWeekEnd(week: number): number {
+  if (week <= 1) return MS_WEEK_1 - 1;
+  return MS_WEEK_1 + (week - 1) * MS_WEEK_2_PLUS - 1;
+}
 
 export function getWeekFromStudyStart(studyStartDate?: number | null): number {
   if (!studyStartDate) return 1;
   const elapsed = Date.now() - studyStartDate;
-  const week = Math.floor(elapsed / MS_PER_WEEK) + 1;
+  const week = getWeekFromElapsed(elapsed);
   return Math.min(8, Math.max(1, week));
 }
 
@@ -53,7 +70,7 @@ export function getWeekFromResponse(
 ): number | undefined {
   if (studyStartDate) {
     const elapsed = response.submittedAt - studyStartDate;
-    const week = Math.floor(elapsed / MS_PER_WEEK) + 1;
+    const week = getWeekFromElapsed(elapsed);
     return Math.min(8, Math.max(1, week));
   }
   const stored = (response.metadata as { week?: number } | undefined)?.week;
@@ -61,11 +78,11 @@ export function getWeekFromResponse(
   return undefined;
 }
 
-/** Format week label with date range (e.g. "Week 1 (Feb 1-7)"). */
+/** Format week label with date range (e.g. "Week 1 (Feb 1-8)", "Week 2 (Feb 9-15)", "Week 3 (Feb 16-22)"). */
 export function formatWeekLabel(week: number, studyStartDate?: number | null): string {
   if (!studyStartDate) return `Week ${week}`;
-  const start = new Date(studyStartDate + (week - 1) * MS_PER_WEEK);
-  const end = new Date(studyStartDate + week * MS_PER_WEEK - 1);
+  const start = new Date(studyStartDate + getElapsedToWeekStart(week));
+  const end = new Date(studyStartDate + getElapsedToWeekEnd(week));
   const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   return `Week ${week} (${fmt(start)}-${fmt(end)})`;
 }
