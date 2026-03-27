@@ -202,7 +202,7 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
                 className="w-full max-w-xs px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]"
               />
               <p className="text-xs text-[var(--muted)] mt-1">
-                Week 1 begins on this date. New submissions are assigned to weeks 1-8 based on this.
+                Week 1 begins on this date. New submissions are assigned to weeks 1-16 based on this.
               </p>
             </div>
             <label className="flex items-center gap-2 cursor-pointer">

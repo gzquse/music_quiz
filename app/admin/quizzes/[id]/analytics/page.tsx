@@ -5,7 +5,16 @@ import Link from "next/link";
 import { db, tx } from "@/lib/instant";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from "@/components/ui";
 import { ChartPanel } from "@/components/admin/ChartPanel";
-import { formatDateTime, calculateAverage, getWeekFromResponse, formatWeekLabel, getScaleAnswerValues } from "@/lib/utils";
+import {
+  formatDateTime,
+  calculateAverage,
+  getWeekFromResponse,
+  formatWeekLabel,
+  getScaleAnswerValues,
+  MAX_STUDY_WEEK,
+} from "@/lib/utils";
+
+const WEEK_INDICES = Array.from({ length: MAX_STUDY_WEEK }, (_, i) => i + 1);
 
 export default function AnalyticsPage() {
   const params = useParams();
@@ -289,7 +298,7 @@ export default function AnalyticsPage() {
         </Card>
       ) : (
         <>
-          {/* Teacher Summaries: 4 teachers, each with 8 weeks per student */}
+          {/* Teacher Summaries: 4 teachers, each with up to MAX_STUDY_WEEK weeks per student */}
           {teacherResponses.length > 0 && (
             <div className="mb-10">
               <h2 className="text-xl font-semibold mb-6">Teacher Summaries</h2>
@@ -311,7 +320,7 @@ export default function AnalyticsPage() {
                         <div className="space-y-6">
                           {teacherStudents.map((student: { id: string; name: string }) => {
                             const byWeek = getResponsesByWeek(teacher.id, student.id);
-                            const weekData = [1, 2, 3, 4, 5, 6, 7, 8].map((week) => {
+                            const weekData = WEEK_INDICES.map((week) => {
                               const w = byWeek[week];
                               const avg = w
                                 ? getResponseAverage(w.answers, scaleQuestionIds)
@@ -419,7 +428,7 @@ export default function AnalyticsPage() {
                                     />
                                     {studentQuiz && (() => {
                                       const studentByWeek = getStudentResponsesByWeek(student.id);
-                                      const comparisonData = [1, 2, 3, 4, 5, 6, 7, 8].map((week) => {
+                                      const comparisonData = WEEK_INDICES.map((week) => {
                                         const tw = byWeek[week];
                                         const sw = studentByWeek[week];
                                         const teacherAvg = tw

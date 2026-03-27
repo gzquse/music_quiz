@@ -5,7 +5,15 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { db, tx } from "@/lib/instant";
 import { Card, Button } from "@/components/ui";
-import { formatDateTime, getWeekFromResponse, formatWeekLabel, getScaleAnswerValues } from "@/lib/utils";
+import {
+  formatDateTime,
+  getWeekFromResponse,
+  formatWeekLabel,
+  getScaleAnswerValues,
+  MAX_STUDY_WEEK,
+} from "@/lib/utils";
+
+const WEEK_INDICES = Array.from({ length: MAX_STUDY_WEEK }, (_, i) => i + 1);
 
 export default function ResponsesViewerPage() {
   const params = useParams();
@@ -165,7 +173,7 @@ export default function ResponsesViewerPage() {
               className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm"
             >
               <option value="all">All (latest)</option>
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((w) => (
+              {WEEK_INDICES.map((w) => (
                 <option key={w} value={w}>{formatWeekLabel(w, teacherStudyStart)}</option>
               ))}
             </select>

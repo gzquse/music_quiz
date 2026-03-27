@@ -12,7 +12,9 @@
     "update-names": "tsx scripts/update-names.ts",
     "clear-participants": "tsx scripts/clear-participants.ts",
     "recover-surveys": "tsx scripts/recover-surveys.ts",
-    "seed-participants": "tsx scripts/seed-participants.ts"
+    "seed-participants": "tsx scripts/seed-participants.ts",
+    "export-study": "tsx scripts/export-study-data.ts",
+    "plot-study": "python scripts/plot_study.py"
   },
   "dependencies": {
     "@instantdb/admin": "^0.22.96",

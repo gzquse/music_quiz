@@ -41,6 +41,9 @@ const MS_WEEK_1 = 8 * 24 * 60 * 60 * 1000;
 const MS_WEEK_2_PLUS = 7 * 24 * 60 * 60 * 1000;
 export const MS_PER_WEEK = MS_WEEK_2_PLUS; // for formatWeekLabel compatibility
 
+/** Maximum study week index derived from study start date or stored metadata (was 8). */
+export const MAX_STUDY_WEEK = 16;
+
 function getWeekFromElapsed(elapsedMs: number): number {
   if (elapsedMs < MS_WEEK_1) return 1;
   return Math.floor((elapsedMs - MS_WEEK_1) / MS_WEEK_2_PLUS) + 2;
@@ -60,10 +63,10 @@ export function getWeekFromStudyStart(studyStartDate?: number | null): number {
   if (!studyStartDate) return 1;
   const elapsed = Date.now() - studyStartDate;
   const week = getWeekFromElapsed(elapsed);
-  return Math.min(8, Math.max(1, week));
+  return Math.min(MAX_STUDY_WEEK, Math.max(1, week));
 }
 
-/** Derive week (1-8) from response. Prefer derived from submittedAt + studyStartDate so display matches actual date; fall back to metadata.week only when studyStartDate is unset. */
+/** Derive week (1..MAX_STUDY_WEEK) from response. Prefer derived from submittedAt + studyStartDate so display matches actual date; fall back to metadata.week only when studyStartDate is unset. */
 export function getWeekFromResponse(
   response: { submittedAt: number; metadata?: { week?: number } },
   studyStartDate?: number | null
@@ -71,10 +74,10 @@ export function getWeekFromResponse(
   if (studyStartDate) {
     const elapsed = response.submittedAt - studyStartDate;
     const week = getWeekFromElapsed(elapsed);
-    return Math.min(8, Math.max(1, week));
+    return Math.min(MAX_STUDY_WEEK, Math.max(1, week));
   }
   const stored = (response.metadata as { week?: number } | undefined)?.week;
-  if (stored != null && stored >= 1 && stored <= 8) return stored;
+  if (stored != null && stored >= 1 && stored <= MAX_STUDY_WEEK) return stored;
   return undefined;
 }
 

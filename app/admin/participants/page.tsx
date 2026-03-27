@@ -106,6 +106,12 @@ export default function ParticipantsPage() {
     await db.transact([tx.teacher_student_assignments[assignmentId].delete()]);
   };
 
+  const updateStudentGroup = async (studentId: string, group: string) => {
+    await db.transact([
+      tx.students[studentId].update({ group: group || undefined }),
+    ]);
+  };
+
   const copyLink = (url: string) => {
     navigator.clipboard.writeText(url);
     alert("Link copied to clipboard");
@@ -149,6 +155,11 @@ export default function ParticipantsPage() {
               >
                 <div>
                   <span className="font-medium">{s.name}</span>
+                  {s.group && (
+                    <span className="text-sm text-[var(--muted)] ml-2">
+                      (Group {s.group})
+                    </span>
+                  )}
                   {getStudentTeacher(s.id) && (
                     <span className="text-sm text-[var(--muted)] ml-2">
                       (Teacher: {getStudentTeacher(s.id)?.name})
@@ -156,6 +167,16 @@ export default function ParticipantsPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
+                  <Select
+                    value={s.group ?? ""}
+                    onChange={(e) => updateStudentGroup(s.id, e.target.value)}
+                    options={[
+                      { value: "", label: "Group" },
+                      { value: "A", label: "A" },
+                      { value: "B", label: "B" },
+                    ]}
+                    className="w-16 py-1.5 text-sm"
+                  />
                   {studentQuiz && (
                     <Button
                       variant="ghost"

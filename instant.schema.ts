@@ -25,6 +25,7 @@ const schema = i.schema({
     students: i.entity({
       name: i.string(),
       createdAt: i.number(),
+      group: i.string().optional(), // "A" | "B"
     }),
     teachers: i.entity({
       name: i.string(),
