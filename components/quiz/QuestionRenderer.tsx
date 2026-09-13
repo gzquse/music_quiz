@@ -1,6 +1,7 @@
 "use client";
 
 import { Question } from "@/lib/instant";
+import { DEFAULT_SCALE_LABELS } from "@/lib/survey";
 import { ScaleInput } from "./ScaleInput";
 import { ChoiceInput } from "./ChoiceInput";
 import { Textarea } from "@/components/ui";
@@ -18,7 +19,7 @@ export function QuestionRenderer({
   question,
   value,
   onChange,
-  scaleLabels = ["Not at all", "Slightly", "Moderately", "Very", "Extremely"],
+  scaleLabels = [...DEFAULT_SCALE_LABELS],
   scaleMin = 1,
   scaleMax = 5,
 }: QuestionRendererProps) {

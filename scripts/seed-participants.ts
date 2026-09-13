@@ -7,6 +7,7 @@ config({ path: ".env.local" });
 config();
 
 import { init, tx, id } from "@instantdb/admin";
+import { CURRENT_PARTICIPANT_NAMES } from "../lib/survey";
 
 const APP_ID = process.env.NEXT_PUBLIC_INSTANTDB_APP_ID || process.env.INSTANTDB_APP_ID || "";
 const ADMIN_TOKEN = process.env.INSTANTDB_ADMIN_TOKEN || "";
@@ -18,15 +19,18 @@ if (!APP_ID || !ADMIN_TOKEN) {
 
 const db = init({ appId: APP_ID, adminToken: ADMIN_TOKEN });
 
-const STUDENT_NAMES = ["Seungwon", "Khang", "Jacob", "Belle", "Matthew", "Xinlin"];
-const TEACHER_NAMES = ["Prof del Pino", "Dr. Jin", "Dr. Sukhina", "Dr. Cash"];
+const TEACHER_NAMES = ["Lingxi Xu", "Dr. Carla Cash"];
 
 async function main() {
   console.log("Creating students...");
-  const studentIds = STUDENT_NAMES.map(() => id());
+  const studentIds = CURRENT_PARTICIPANT_NAMES.map(() => id());
   await db.transact(
     studentIds.map((sid, i) =>
-      tx.students[sid].update({ name: STUDENT_NAMES[i], createdAt: Date.now() })
+      tx.students[sid].update({
+        name: CURRENT_PARTICIPANT_NAMES[i],
+        createdAt: Date.now(),
+        isActive: true,
+      })
     )
   );
 
@@ -39,28 +43,19 @@ async function main() {
   );
 
   console.log("Creating teacher-student assignments...");
-  const assignments = [
-    { teacherId: teacherIds[0], studentId: studentIds[0] },
-    { teacherId: teacherIds[0], studentId: studentIds[1] },
-    { teacherId: teacherIds[1], studentId: studentIds[2] },
-    { teacherId: teacherIds[1], studentId: studentIds[3] },
-    { teacherId: teacherIds[2], studentId: studentIds[4] },
-    { teacherId: teacherIds[3], studentId: studentIds[5] },
-  ];
   await db.transact(
-    assignments.map((a) =>
+    studentIds.map((studentId) =>
       tx.teacher_student_assignments[id()].update({
-        teacherId: a.teacherId,
-        studentId: a.studentId,
+        teacherId: teacherIds[0],
+        studentId,
       })
     )
   );
 
   console.log("Participants seeded:");
-  console.log("  Prof del Pino -> Seungwon, Khang");
-  console.log("  Dr. Jin -> Jacob, Belle");
-  console.log("  Dr. Sukhina -> Matthew");
-  console.log("  Dr. Cash -> Xinlin");
+  console.log("  Students:", CURRENT_PARTICIPANT_NAMES.join(", "));
+  console.log("  Instructor: Lingxi Xu");
+  console.log("  Research supervisor: Dr. Carla Cash");
 }
 
 main().catch((err) => {

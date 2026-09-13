@@ -21,7 +21,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={id}
           className={cn(
-            "w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface)]",
+            "w-full px-4 py-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)]",
             "text-[var(--foreground)] placeholder:text-[var(--muted)]",
             "transition-colors duration-150",
             "hover:border-[var(--primary-light)]",
@@ -57,7 +57,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={id}
           className={cn(
-            "w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface)]",
+            "w-full px-4 py-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)]",
             "text-[var(--foreground)] placeholder:text-[var(--muted)]",
             "transition-colors duration-150 resize-y min-h-[100px]",
             "hover:border-[var(--primary-light)]",

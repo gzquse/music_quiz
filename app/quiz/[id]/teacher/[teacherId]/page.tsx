@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { db, tx, id as genId, type Question } from "@/lib/instant";
 import { getWeekFromStudyStart } from "@/lib/utils";
-import { QuestionRenderer } from "@/components/quiz";
-import { Button, Card } from "@/components/ui";
+import {
+  SurveyComplete,
+  SurveyExperience,
+  SurveySpinner,
+  SurveyState,
+} from "@/components/quiz";
+import { Button } from "@/components/ui";
 
 export default function TeacherQuizPage() {
   const params = useParams();
@@ -14,8 +18,6 @@ export default function TeacherQuizPage() {
   const teacherId = params.teacherId as string;
 
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-  const [answers, setAnswers] = useState<Record<string, string | number>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const { isLoading, error, data } = db.useQuery({
@@ -38,254 +40,122 @@ export default function TeacherQuizPage() {
     .map((q) => ({ ...q, type: q.type as Question["type"] }))
     .sort((a, b) => a.order - b.order);
 
-  const handleAnswerChange = (questionId: string, value: string | number) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: value }));
-  };
+  const selectedStudent = assignedStudents.find((s) => s.id === selectedStudentId);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (answers: Record<string, string | number>) => {
     if (!quiz || !teacher || !selectedStudentId) return;
-    setIsSubmitting(true);
-    try {
-      const responseId = genId();
-      const week = getWeekFromStudyStart(quiz.studyStartDate);
-      const answerTxs = Object.entries(answers).map(([questionId, value]) =>
+    const responseId = genId();
+    const week = getWeekFromStudyStart(quiz.studyStartDate);
+    const answerTxs = Object.entries(answers)
+      .filter(([, value]) => value !== "" && value !== undefined)
+      .map(([questionId, value]) =>
         tx.answers[genId()].update({
           responseId,
           questionId,
           value,
         })
       );
-      await db.transact([
-        tx.responses[responseId].update({
-          quizId: quiz.id,
-          submittedAt: Date.now(),
-          metadata: { userAgent: navigator.userAgent, week },
-          respondentType: "teacher",
-          studentId: selectedStudentId,
-          teacherId,
-        }),
-        ...answerTxs,
-      ]);
-      setIsSubmitted(true);
-    } catch (err) {
-      console.error("Failed to submit:", err);
-      alert("Failed to submit. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    await db.transact([
+      tx.responses[responseId].update({
+        quizId: quiz.id,
+        submittedAt: Date.now(),
+        metadata: { userAgent: navigator.userAgent, week },
+        respondentType: "teacher",
+        studentId: selectedStudentId,
+        teacherId,
+      }),
+      ...answerTxs,
+    ]);
+    setIsSubmitted(true);
   };
-
-  const selectedStudent = assignedStudents.find((s) => s.id === selectedStudentId);
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center">
-          <div className="w-16 h-16 rounded-full bg-[var(--success)]/10 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold mb-2">Thank You!</h1>
-          <p className="text-[var(--muted)] mb-6">Your response has been recorded successfully.</p>
-          <div className="flex flex-col gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setSelectedStudentId(null);
-                setAnswers({});
-                setIsSubmitted(false);
-              }}
-            >
-              Fill for Another Student
-            </Button>
-            <Link href="/">
-              <Button variant="ghost">Back to Home</Button>
-            </Link>
-          </div>
-        </Card>
-      </div>
+      <SurveyComplete
+        message={
+          selectedStudent
+            ? `Your assessment of ${selectedStudent.name} has been saved.`
+            : "Your response has been saved."
+        }
+        extraAction={
+          <Button
+            className="h-14 w-full rounded-full text-[17px] font-semibold"
+            onClick={() => {
+              setSelectedStudentId(null);
+              setIsSubmitted(false);
+            }}
+          >
+            Fill for another student
+          </Button>
+        }
+      />
     );
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <SurveySpinner />;
   }
 
   if (error || !quiz || !teacher) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center">
-          <h1 className="text-2xl font-bold mb-2">Survey Not Found</h1>
-          <p className="text-[var(--muted)] mb-6">This survey or teacher link may be invalid.</p>
-          <Link href="/">
-            <Button>Back to Home</Button>
-          </Link>
-        </Card>
-      </div>
+      <SurveyState
+        title="Link not found"
+        message="This survey or teacher link may be invalid."
+      />
     );
   }
 
   if (assignedStudents.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center">
-          <h1 className="text-2xl font-bold mb-2">No Students Assigned</h1>
-          <p className="text-[var(--muted)] mb-6">
-            You have no students assigned. Please contact the administrator.
-          </p>
-          <Link href="/">
-            <Button>Back to Home</Button>
-          </Link>
-        </Card>
-      </div>
+      <SurveyState
+        title="No students assigned"
+        message="You have no students assigned. Please contact the administrator."
+      />
     );
   }
 
-  // Step 1: Select student
   if (!selectedStudentId) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <h1 className="text-2xl font-bold mb-2">{quiz.title}</h1>
-          <p className="text-[var(--muted)] mb-6">Select the student you are assessing today:</p>
-          <div className="space-y-2">
-            {assignedStudents.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSelectedStudentId(s.id)}
-                className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-left font-medium transition-colors"
-              >
-                {s.name}
-              </button>
-            ))}
-          </div>
-          <Link href="/" className="block mt-6 text-center text-sm text-[var(--muted)] hover:text-[var(--foreground)]">
-            Back to Home
-          </Link>
-        </Card>
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col bg-[var(--background)] px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
+        <header className="pt-4">
+          <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">
+            {teacher.name}
+          </p>
+          <h1 className="mt-2 text-[28px] font-semibold leading-tight tracking-tight">
+            {quiz.title}
+          </h1>
+          <p className="mt-3 text-[17px] text-[var(--muted)]">
+            Select the student you are assessing today.
+          </p>
+        </header>
+        <div className="mt-8 overflow-hidden rounded-[20px] bg-[var(--surface)] shadow-[var(--shadow)]">
+          {assignedStudents.map((s, index) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setSelectedStudentId(s.id)}
+              className={`flex min-h-[56px] w-full items-center justify-between px-5 text-left text-[17px] font-medium active:bg-[var(--surface-hover)] ${
+                index !== assignedStudents.length - 1 ? "border-b border-[var(--border)]" : ""
+              }`}
+            >
+              {s.name}
+              <svg className="h-5 w-5 text-[var(--muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          ))}
+        </div>
       </div>
     );
   }
 
-  const requiredQuestions = questions.filter((q) => q.required);
-  const answeredRequired = requiredQuestions.filter((q) => answers[q.id] !== undefined);
-  const progress = requiredQuestions.length > 0
-    ? (answeredRequired.length / requiredQuestions.length) * 100
-    : 0;
-
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--surface)]">
-        <div className="max-w-3xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-2">
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedStudentId(null);
-                setAnswers({});
-              }}
-              className="text-[var(--muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Change student
-            </button>
-            <span className="text-sm text-[var(--muted)]">
-              Assessing: {selectedStudent?.name} | {answeredRequired.length}/{requiredQuestions.length} required
-            </span>
-          </div>
-          <div className="h-1 bg-[var(--border)] rounded-full overflow-hidden">
-            <div
-              className="h-full bg-[var(--primary)] transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-3xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">{quiz.title}</h1>
-          <p className="text-[var(--muted)]">{quiz.description}</p>
-        </div>
-
-        {quiz.instructions && (
-          <Card className="mb-8 bg-[var(--accent-light)]/20 border-[var(--accent)]">
-            <h2 className="font-semibold mb-2">Instructions</h2>
-            <p className="text-sm whitespace-pre-line">{quiz.instructions}</p>
-          </Card>
-        )}
-
-        <Card className="mb-8">
-          <h2 className="font-semibold mb-3">Rating Scale</h2>
-          <div className="flex flex-wrap gap-4 text-sm">
-            {(quiz.scaleLabels || ["Not at all", "Slightly", "Moderately", "Very", "Extremely"]).map(
-              (label, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-[var(--surface-hover)] flex items-center justify-center text-xs font-medium">
-                    {index + 1}
-                  </span>
-                  <span className="text-[var(--muted)]">{label}</span>
-                </div>
-              )
-            )}
-          </div>
-        </Card>
-
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-6">
-            {questions.map((question, index) => (
-              <Card key={question.id}>
-                <div className="mb-4">
-                  <div className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center text-sm font-semibold">
-                      {index + 1}
-                    </span>
-                    <div>
-                      <h3 className="font-medium text-lg">{question.text}</h3>
-                      {!question.required && (
-                        <span className="text-sm text-[var(--muted)]">(Optional)</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <QuestionRenderer
-                  question={question}
-                  value={answers[question.id] ?? null}
-                  onChange={(value) => handleAnswerChange(question.id, value)}
-                  scaleLabels={quiz.scaleLabels || undefined}
-                  scaleMin={quiz.scaleMin || 1}
-                  scaleMax={quiz.scaleMax || 5}
-                />
-              </Card>
-            ))}
-          </div>
-          <div className="mt-8 flex justify-end">
-            <Button
-              type="submit"
-              size="lg"
-              disabled={isSubmitting || answeredRequired.length < requiredQuestions.length}
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  Submitting...
-                </>
-              ) : (
-                "Submit Response"
-              )}
-            </Button>
-          </div>
-        </form>
-      </main>
-    </div>
+    <SurveyExperience
+      quiz={{ ...quiz, variant: (quiz.variant || "teacher") as "student" | "teacher" }}
+      questions={questions}
+      greeting={selectedStudent?.name}
+      greetingPrefix="Assessing "
+      onSubmit={handleSubmit}
+    />
   );
 }

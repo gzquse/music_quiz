@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { DEFAULT_SCALE_LABELS } from "@/lib/survey";
 
 interface ScaleInputProps {
   name: string;
@@ -18,23 +19,23 @@ export function ScaleInput({
   onChange,
   min = 1,
   max = 5,
-  labels = ["Not at all", "Slightly", "Moderately", "Very", "Extremely"],
+  labels = [...DEFAULT_SCALE_LABELS],
   required = false,
 }: ScaleInputProps) {
   const options = Array.from({ length: max - min + 1 }, (_, i) => min + i);
 
   return (
     <div className="w-full">
-      <div className="flex justify-between items-center gap-2 sm:gap-4">
+      <div className="flex items-stretch gap-2">
         {options.map((option) => (
           <label
             key={option}
             className={cn(
-              "flex-1 flex flex-col items-center gap-2 p-3 rounded-lg cursor-pointer",
-              "border-2 transition-all duration-150",
+              "flex min-h-[72px] flex-1 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl px-1 py-3",
+              "border transition-all duration-150",
               value === option
-                ? "border-[var(--primary)] bg-[var(--primary)]/5"
-                : "border-[var(--border)] hover:border-[var(--primary-light)]"
+                ? "border-[var(--primary)] bg-[var(--accent-light)]"
+                : "border-[var(--border)] bg-[var(--surface)] active:bg-[var(--surface-hover)]"
             )}
           >
             <input
@@ -48,8 +49,7 @@ export function ScaleInput({
             />
             <span
               className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold",
-                "transition-colors duration-150",
+                "flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold",
                 value === option
                   ? "bg-[var(--primary)] text-white"
                   : "bg-[var(--surface-hover)] text-[var(--foreground)]"
@@ -57,18 +57,12 @@ export function ScaleInput({
             >
               {option}
             </span>
-            <span className="text-xs text-center text-[var(--muted)] hidden sm:block">
+            <span className="text-center text-[10px] leading-tight text-[var(--muted)] sm:text-xs">
               {labels[option - min]}
             </span>
           </label>
         ))}
       </div>
-      {/* Mobile labels */}
-      <div className="flex justify-between mt-2 sm:hidden">
-        <span className="text-xs text-[var(--muted)]">{labels[0]}</span>
-        <span className="text-xs text-[var(--muted)]">{labels[labels.length - 1]}</span>
-      </div>
     </div>
   );
 }
-

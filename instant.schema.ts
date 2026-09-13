@@ -21,11 +21,13 @@ const schema = i.schema({
       options: i.json<string[] | null>(),
       order: i.number(),
       required: i.boolean(),
+      title: i.string().optional(),
     }),
     students: i.entity({
       name: i.string(),
       createdAt: i.number(),
       group: i.string().optional(), // "A" | "B"
+      isActive: i.boolean().optional(),
     }),
     teachers: i.entity({
       name: i.string(),

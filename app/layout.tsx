@@ -1,13 +1,7 @@
-import type { Metadata } from "next";
-import { DM_Sans, JetBrains_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { JetBrains_Mono } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
-
-const dmSans = DM_Sans({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
 
 const jetBrainsMono = JetBrains_Mono({
   variable: "--font-geist-mono",
@@ -15,8 +9,27 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Music Survey | Post-Session Playing Experience",
-  description: "Share your playing experience through our research survey",
+  title: "Weekly Piano Practice Movement Questionnaire",
+  description:
+    "A brief weekly survey about body movement during piano practice. Instructor: Lingxi Xu. Research supervisor: Dr. Carla Cash.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Practice Survey",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F2F2F7" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
 };
 
 export default function RootLayout({
@@ -26,9 +39,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${dmSans.variable} ${jetBrainsMono.variable} antialiased`}
-      >
+      <body className={`${jetBrainsMono.variable} antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

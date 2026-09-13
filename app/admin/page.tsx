@@ -1,27 +1,35 @@
 "use client";
 
-import { db } from "@/lib/instant";
+import { useState } from "react";
+import { db, type Question, type Quiz, type Student } from "@/lib/instant";
 import { Card, CardHeader, CardTitle, CardContent, Button } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
+import { isActiveParticipant, sortParticipants, SURVEY_TITLE } from "@/lib/survey";
+import { syncWeeklySurvey } from "@/lib/syncWeeklySurvey";
 import Link from "next/link";
 
 export default function AdminDashboardPage() {
   const { data, isLoading } = db.useQuery({
     quizzes: {},
+    questions: {},
     responses: {},
     students: {},
     teachers: {},
   });
 
+  const [isApplying, setIsApplying] = useState(false);
   const quizzes = data?.quizzes || [];
   const responses = data?.responses || [];
-  const students = data?.students || [];
+  const students = sortParticipants((data?.students || []).filter(isActiveParticipant));
+  const allStudents = data?.students || [];
   const teachers = data?.teachers || [];
 
-  const studentQuiz = quizzes.find(
-    (q: { variant?: string; title?: string }) =>
-      q.variant === "student" || (q.title || "").toLowerCase().includes("student")
-  );
+  const studentQuiz =
+    quizzes.find((q: { title?: string }) => q.title === SURVEY_TITLE) ??
+    quizzes.find(
+      (q: { variant?: string; title?: string }) =>
+        q.variant === "student" || (q.title || "").toLowerCase().includes("student")
+    );
   const teacherQuiz = quizzes.find(
     (q: { variant?: string; title?: string }) =>
       q.variant === "teacher" || (q.title || "").toLowerCase().includes("teacher")
@@ -53,9 +61,36 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-[var(--muted)]">Overview of your surveys and responses</p>
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-[var(--muted)]">Overview of your surveys and responses</p>
+        </div>
+        <Button
+          variant="secondary"
+          disabled={isApplying}
+          onClick={async () => {
+            setIsApplying(true);
+            try {
+              await syncWeeklySurvey({
+                quizzes: (data?.quizzes || []) as Quiz[],
+                questions: (data?.questions || []).map((q) => ({
+                  ...q,
+                  type: q.type as Question["type"],
+                })),
+                students: allStudents as Student[],
+              });
+              alert("Weekly questionnaire and participant roster are ready.");
+            } catch (err) {
+              console.error(err);
+              alert("Could not update the survey. Please try again.");
+            } finally {
+              setIsApplying(false);
+            }
+          }}
+        >
+          {isApplying ? "Updating..." : "Apply weekly questionnaire"}
+        </Button>
       </div>
 
       {/* Stats Grid */}
@@ -143,7 +178,7 @@ export default function AdminDashboardPage() {
       )}
 
       {/* Survey links - all 10 participant links */}
-      {studentQuiz && teacherQuiz && (students.length > 0 || teachers.length > 0) && (
+      {studentQuiz && (students.length > 0 || teachers.length > 0) && (
         <Card className="mb-8">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -159,9 +194,11 @@ export default function AdminDashboardPage() {
           <CardContent>
             <div className="grid gap-6 md:grid-cols-2">
               <div>
-                <h3 className="font-medium mb-2 text-sm text-[var(--muted)]">Students (6 links)</h3>
+                <h3 className="font-medium mb-2 text-sm text-[var(--muted)]">
+                  Students ({students.length} links)
+                </h3>
                 <div className="space-y-2">
-                  {students.map((s: { id: string; name: string }, i: number) => {
+                  {students.map((s: { id: string; name: string }) => {
                     const url = `${baseUrl}/quiz/${studentQuiz.id}/student/${s.id}`;
                     return (
                       <div key={s.id} className="flex items-center gap-2">
@@ -190,9 +227,11 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
               <div>
-                <h3 className="font-medium mb-2 text-sm text-[var(--muted)]">Teachers (4 links)</h3>
+                <h3 className="font-medium mb-2 text-sm text-[var(--muted)]">
+                  Teachers ({teachers.length} links)
+                </h3>
                 <div className="space-y-2">
-                  {teachers.map((t: { id: string; name: string }) => {
+                  {teacherQuiz && teachers.map((t: { id: string; name: string }) => {
                     const url = `${baseUrl}/quiz/${teacherQuiz.id}/teacher/${t.id}`;
                     return (
                       <div key={t.id} className="flex items-center gap-2">
@@ -215,6 +254,9 @@ export default function AdminDashboardPage() {
                       </div>
                     );
                   })}
+                  {!teacherQuiz && teachers.length > 0 && (
+                    <p className="text-sm text-[var(--muted)]">No teacher survey is available.</p>
+                  )}
                   {teachers.length === 0 && (
                     <p className="text-sm text-[var(--muted)]">No teachers. Add in Participants.</p>
                   )}

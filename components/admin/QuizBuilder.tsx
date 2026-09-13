@@ -6,6 +6,7 @@ import { db, tx, id as genId, Quiz, Question } from "@/lib/instant";
 import { Button, Input, Textarea, Card } from "@/components/ui";
 import { QuestionEditor } from "./QuestionEditor";
 import { generateId } from "@/lib/utils";
+import { DEFAULT_SCALE_LABELS } from "@/lib/survey";
 
 interface QuizBuilderProps {
   existingQuiz?: Quiz;
@@ -28,13 +29,7 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
     instructions: existingQuiz?.instructions || "",
     scaleMin: existingQuiz?.scaleMin || 1,
     scaleMax: existingQuiz?.scaleMax || 5,
-    scaleLabels: existingQuiz?.scaleLabels || [
-      "Not at all",
-      "Slightly",
-      "Moderately",
-      "Very",
-      "Extremely",
-    ],
+    scaleLabels: existingQuiz?.scaleLabels || [...DEFAULT_SCALE_LABELS],
     isActive: existingQuiz?.isActive ?? false,
     variant: (existingQuiz?.variant || "student") as "student" | "teacher",
     studyStartDate: existingQuiz?.studyStartDate
@@ -62,6 +57,7 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
       ...prev,
       {
         tempId: generateId(),
+        title: "",
         text: "",
         type: "scale",
         options: null,
@@ -136,6 +132,7 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
             options: q.options,
             order: index,
             required: q.required ?? true,
+            title: q.title || "",
           });
         });
         await db.transact(questionTransactions);
@@ -160,7 +157,7 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
             label="Title"
             value={quiz.title}
             onChange={(e) => setQuiz({ ...quiz, title: e.target.value })}
-            placeholder="e.g., Post-Session Playing Experience Survey"
+            placeholder="e.g., Weekly Piano Practice Movement Questionnaire"
             required
           />
 
@@ -251,7 +248,7 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
             onChange={(e) =>
               setQuiz({ ...quiz, scaleLabels: e.target.value.split("\n") })
             }
-            placeholder="Not at all&#10;Slightly&#10;Moderately&#10;Very&#10;Extremely"
+            placeholder="Never&#10;Rarely&#10;Sometimes&#10;Often&#10;Very often"
             className="w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] min-h-[120px] resize-y"
           />
         </div>

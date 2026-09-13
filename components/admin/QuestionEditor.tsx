@@ -66,6 +66,13 @@ export function QuestionEditor({
         {/* Question Content */}
         <div className="flex-1 space-y-4">
           <Input
+            label="Short title"
+            value={question.title || ""}
+            onChange={(e) => onChange({ ...question, title: e.target.value })}
+            placeholder="e.g., Body Observation"
+          />
+
+          <Input
             label="Question Text"
             value={question.text || ""}
             onChange={(e) => onChange({ ...question, text: e.target.value })}

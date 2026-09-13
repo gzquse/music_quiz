@@ -7,6 +7,14 @@ config({ path: ".env.local" });
 config(); // fallback to .env
 
 import { init, tx, id } from "@instantdb/admin";
+import {
+  CURRENT_PARTICIPANT_NAMES,
+  DEFAULT_SCALE_LABELS,
+  SURVEY_DESCRIPTION,
+  SURVEY_INSTRUCTIONS,
+  SURVEY_TITLE,
+  WEEKLY_QUESTIONS,
+} from "../lib/survey";
 
 const APP_ID = process.env.NEXT_PUBLIC_INSTANTDB_APP_ID || process.env.INSTANTDB_APP_ID || "";
 
@@ -23,18 +31,13 @@ if (!APP_ID || !ADMIN_TOKEN) {
 // Initialize InstantDB Admin
 const db = init({ appId: APP_ID, adminToken: ADMIN_TOKEN });
 
-// Student version questions (recovered from Survey questions Student ver .docx)
-const studentQuestions = [
-  { text: "I was aware of my body and movement during my lesson today.", type: "scale" as const, order: 0, required: true },
-  { text: "My body was physically free and relaxed while playing during today's lesson.", type: "scale" as const, order: 1, required: true },
-  { text: "My body was flexible, responsive, and physically ready for piano playing during the lesson today.", type: "scale" as const, order: 2, required: true },
-  { text: "Physical movements or bodily sensations felt integrated in my piano technique at the lesson today.", type: "scale" as const, order: 3, required: true },
-  { text: "My piano technique allowed me to play comfortably and clearly.", type: "scale" as const, order: 4, required: true },
-  { text: "My physical state supported my musical expressions at the piano today.", type: "scale" as const, order: 5, required: true },
-  { text: "If anything stood out in today's playing experience, please describe it briefly:", type: "text" as const, order: 6, required: false },
-  { text: "Your name:", type: "text" as const, order: 7, required: false },
-  { text: "Today's session included a guided warm-up", type: "choice" as const, options: ["Yes", "No"], order: 8, required: true },
-];
+const studentQuestions = WEEKLY_QUESTIONS.map((q, order) => ({
+  title: q.title,
+  text: q.text,
+  type: q.type,
+  order,
+  required: q.required,
+}));
 
 // Teacher version questions (recovered from Survey questions Teacher Ver .docx)
 const teacherQuestions = [
@@ -62,21 +65,25 @@ async function seed() {
   console.log("Starting database seed...");
 
   try {
-    // 1. Create 6 students
+    // 1. Create current students
     console.log("Creating students...");
-    const studentIds = [id(), id(), id(), id(), id(), id()];
-    const studentNames = ["Seungwon", "Khang", "Jacob", "Belle", "Matthew", "Xinlin"];
+    const studentIds = CURRENT_PARTICIPANT_NAMES.map(() => id());
+    const studentNames = [...CURRENT_PARTICIPANT_NAMES];
     const students = studentIds.map((sid, i) => ({
       id: sid,
       name: studentNames[i] ?? `Student ${i + 1}`,
       createdAt: Date.now(),
     }));
-    await db.transact(students.map((s) => tx.students[s.id].update({ name: s.name, createdAt: s.createdAt })));
+    await db.transact(
+      students.map((s) =>
+        tx.students[s.id].update({ name: s.name, createdAt: s.createdAt, isActive: true })
+      )
+    );
 
-    // 2. Create 4 teachers
+    // 2. Create instructor and supervisor
     console.log("Creating teachers...");
-    const teacherIds = [id(), id(), id(), id()];
-    const teacherNames = ["Prof del Pino", "Dr. Jin", "Dr. Sukhina", "Dr. Cash"];
+    const teacherIds = [id(), id()];
+    const teacherNames = ["Lingxi Xu", "Dr. Carla Cash"];
     const teachers = teacherIds.map((tid, i) => ({
       id: tid,
       name: teacherNames[i] ?? `Teacher ${i + 1}`,
@@ -84,16 +91,11 @@ async function seed() {
     }));
     await db.transact(teachers.map((t) => tx.teachers[t.id].update({ name: t.name, createdAt: t.createdAt })));
 
-    // 3. Create teacher-student assignments: T1:S1,S2; T2:S3,S4; T3:S5; T4:S6
     console.log("Creating teacher-student assignments...");
-    const assignments = [
-      { teacherId: teacherIds[0], studentId: studentIds[0] },
-      { teacherId: teacherIds[0], studentId: studentIds[1] },
-      { teacherId: teacherIds[1], studentId: studentIds[2] },
-      { teacherId: teacherIds[1], studentId: studentIds[3] },
-      { teacherId: teacherIds[2], studentId: studentIds[4] },
-      { teacherId: teacherIds[3], studentId: studentIds[5] },
-    ];
+    const assignments = studentIds.map((studentId) => ({
+      teacherId: teacherIds[0],
+      studentId,
+    }));
     const assignmentIds = assignments.map(() => id());
     await db.transact(
       assignmentIds.map((aid, i) =>
@@ -112,15 +114,13 @@ async function seed() {
     const studentQuizId = id();
     await db.transact([
       tx.quizzes[studentQuizId].update({
-        title: "Post-Session Playing Experience Survey (Student Ver)",
+        title: SURVEY_TITLE,
         studyStartDate,
-        description:
-          "Please respond to the questions below based on your own playing experience and physical state at today's lesson. Please respond within 24 hours of receipt of the survey.",
-        instructions:
-          "Please respond to the questions below based on your own playing experience and physical state at today's lesson. Please respond within 24 hours of receipt of the survey.\n\nScale:\n1 = Not at all\n2 = Slightly\n3 = Moderately\n4 = Very\n5 = Extremely",
+        description: SURVEY_DESCRIPTION,
+        instructions: SURVEY_INSTRUCTIONS,
         scaleMin: 1,
         scaleMax: 5,
-        scaleLabels: ["Not at all", "Slightly", "Moderately", "Very", "Extremely"],
+        scaleLabels: [...DEFAULT_SCALE_LABELS],
         isActive: true,
         createdAt: Date.now(),
         variant: "student",
@@ -132,6 +132,7 @@ async function seed() {
       studentQuestions.map((q, i) =>
         tx.questions[studentQuestionIds[i]].update({
           quizId: studentQuizId,
+          title: "title" in q ? q.title : "",
           text: q.text,
           type: q.type,
           options: "options" in q && q.options ? q.options : null,
@@ -154,8 +155,8 @@ async function seed() {
           "Please respond to the questions below based on your observations of your student's physical state and performance at today's lesson. Please respond within 24 hours of receipt of the survey.\n\nScale:\n1 = Not at all\n2 = Slightly\n3 = Moderately\n4 = Very\n5 = Extremely",
         scaleMin: 1,
         scaleMax: 5,
-        scaleLabels: ["Not at all", "Slightly", "Moderately", "Very", "Extremely"],
-        isActive: true,
+        scaleLabels: [...DEFAULT_SCALE_LABELS],
+        isActive: false,
         createdAt: Date.now(),
         variant: "teacher",
       }),
@@ -175,13 +176,12 @@ async function seed() {
       )
     );
 
-    // 6. Create 8 weeks of student self-assessments (6 students x 8 weeks = 48 responses)
-    const WEEKS = 8;
+    const WEEKS = 10;
 
     console.log(`Creating ${WEEKS} weeks of student responses...`);
     for (let week = 1; week <= WEEKS; week++) {
       const weekStart = studyStartDate + (week - 1) * MS_PER_WEEK;
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < studentIds.length; i++) {
         const responseId = id();
         const submittedAt = weekStart + i * 60 * 60 * 1000; // spread within week
         await db.transact([
@@ -199,8 +199,6 @@ async function seed() {
           const qu = studentQuestions[q];
           let value: string | number;
           if (qu.type === "scale") value = generateWeightedScore();
-          else if (qu.type === "choice" && qu.options) value = qu.options[Math.floor(Math.random() * qu.options.length)];
-          else if (qu.type === "text" && qu.order === 7) value = students[i].name;
           else value = "";
           answerTxs.push(
             tx.answers[id()].update({
@@ -249,7 +247,9 @@ async function seed() {
 
     console.log("Seed completed successfully!");
     console.log("Students:", studentIds.length, "| Teachers:", teacherIds.length);
-    console.log("Responses: 48 student + 48 teacher = 96 total (8 weeks)");
+    console.log(
+      `Responses: ${studentIds.length * WEEKS} student + ${assignments.length * WEEKS} teacher (${WEEKS} weeks)`
+    );
     console.log("Student quiz ID:", studentQuizId);
     console.log("Teacher quiz ID:", teacherQuizId);
     console.log("Add these to .env.local or use in URLs:");

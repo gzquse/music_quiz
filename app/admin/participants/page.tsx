@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { db, tx, id as genId } from "@/lib/instant";
 import { Card, Button, Input, Select } from "@/components/ui";
+import { sortParticipants, SURVEY_TITLE } from "@/lib/survey";
 
 export default function ParticipantsPage() {
   const { data, isLoading } = db.useQuery({
@@ -12,12 +13,13 @@ export default function ParticipantsPage() {
     quizzes: {},
   });
 
-  const students = data?.students || [];
+  const students = sortParticipants(data?.students || []);
   const teachers = data?.teachers || [];
   const assignments = data?.teacher_student_assignments || [];
   const quizzes = data?.quizzes || [];
 
   const studentQuiz =
+    quizzes.find((q) => q.title === SURVEY_TITLE) ??
     quizzes.find((q) => q.variant === "student") ??
     quizzes.find((q) => (q.title || "").toLowerCase().includes("student"));
   const teacherQuiz =
@@ -47,6 +49,7 @@ export default function ParticipantsPage() {
       tx.students[genId()].update({
         name: newStudentName.trim(),
         createdAt: Date.now(),
+        isActive: true,
       }),
     ]);
     setNewStudentName("");
@@ -155,6 +158,9 @@ export default function ParticipantsPage() {
               >
                 <div>
                   <span className="font-medium">{s.name}</span>
+                  {s.isActive === false && (
+                    <span className="text-sm text-[var(--muted)] ml-2">(Inactive)</span>
+                  )}
                   {s.group && (
                     <span className="text-sm text-[var(--muted)] ml-2">
                       (Group {s.group})
@@ -167,6 +173,19 @@ export default function ParticipantsPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      db.transact([
+                        tx.students[s.id].update({
+                          isActive: s.isActive === false,
+                        }),
+                      ])
+                    }
+                  >
+                    {s.isActive === false ? "Activate" : "Hide"}
+                  </Button>
                   <Select
                     value={s.group ?? ""}
                     onChange={(e) => updateStudentGroup(s.id, e.target.value)}
@@ -177,7 +196,7 @@ export default function ParticipantsPage() {
                     ]}
                     className="w-16 py-1.5 text-sm"
                   />
-                  {studentQuiz && (
+                  {studentQuiz && s.isActive !== false && (
                     <Button
                       variant="ghost"
                       size="sm"

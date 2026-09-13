@@ -24,12 +24,15 @@ export type Question = {
   options: string[] | null;
   order: number;
   required: boolean;
+  title?: string;
 };
 
 export type Student = {
   id: string;
   name: string;
   createdAt: number;
+  group?: string;
+  isActive?: boolean;
 };
 
 export type Teacher = {

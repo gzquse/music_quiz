@@ -13,6 +13,7 @@
     "clear-participants": "tsx scripts/clear-participants.ts",
     "recover-surveys": "tsx scripts/recover-surveys.ts",
     "seed-participants": "tsx scripts/seed-participants.ts",
+    "apply-weekly-survey": "tsx scripts/apply-weekly-survey.ts",
     "export-study": "tsx scripts/export-study-data.ts",
     "plot-study": "python scripts/plot_study.py"
   },

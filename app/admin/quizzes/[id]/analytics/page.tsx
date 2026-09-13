@@ -5,6 +5,7 @@ import Link from "next/link";
 import { db, tx } from "@/lib/instant";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from "@/components/ui";
 import { ChartPanel } from "@/components/admin/ChartPanel";
+import { SURVEY_TITLE } from "@/lib/survey";
 import {
   formatDateTime,
   calculateAverage,
@@ -32,10 +33,12 @@ export default function AnalyticsPage() {
 
   const allQuizzes = data?.quizzes || [];
   const quiz = allQuizzes.find((q: { id: string }) => q.id === quizId);
-  const studentQuiz = allQuizzes.find(
-    (q: { variant?: string; title?: string }) =>
-      q.variant === "student" || (q.title || "").toLowerCase().includes("student")
-  );
+  const studentQuiz =
+    allQuizzes.find((q: { title?: string }) => q.title === SURVEY_TITLE) ??
+    allQuizzes.find(
+      (q: { variant?: string; title?: string }) =>
+        q.variant === "student" || (q.title || "").toLowerCase().includes("student")
+    );
   const allQuestions = data?.questions || [];
   const questions = allQuestions
     .filter((q: { quizId: string }) => q.quizId === quizId)

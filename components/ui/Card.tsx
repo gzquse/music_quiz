@@ -9,8 +9,8 @@ export function Card({ className, hover = false, children, ...props }: CardProps
   return (
     <div
       className={cn(
-        "bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6",
-        hover && "transition-all duration-150 hover:border-[var(--primary)] hover:shadow-lg cursor-pointer",
+        "bg-[var(--surface)] border border-[var(--border)] rounded-[20px] p-6 shadow-[var(--shadow)]",
+        hover && "transition-all duration-150 hover:border-[var(--primary)] cursor-pointer",
         className
       )}
       {...props}
