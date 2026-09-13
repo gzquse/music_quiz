@@ -9,6 +9,7 @@ export const CURRENT_PARTICIPANT_NAMES = [
   "Jacob",
   "Ana",
   "Heriberto",
+  "David",
 ] as const;
 
 export const DEFAULT_SCALE_LABELS = [

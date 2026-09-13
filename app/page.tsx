@@ -4,12 +4,17 @@ import { useEffect, useRef } from "react";
 import { db, type Question, type Quiz, type Student } from "@/lib/instant";
 import { NamePicker, SurveySpinner, SurveyState } from "@/components/quiz";
 import {
+  CURRENT_PARTICIPANT_NAMES,
   isActiveParticipant,
   sortParticipants,
   SURVEY_DESCRIPTION,
   SURVEY_TITLE,
 } from "@/lib/survey";
-import { syncWeeklySurvey } from "@/lib/syncWeeklySurvey";
+import {
+  ensureCurrentParticipants,
+  missingCurrentParticipants,
+  syncWeeklySurvey,
+} from "@/lib/syncWeeklySurvey";
 
 export default function HomePage() {
   const didSync = useRef(false);
@@ -21,19 +26,29 @@ export default function HomePage() {
 
   useEffect(() => {
     if (didSync.current || isLoading || !data) return;
+    const students = (data.students || []) as Student[];
     const hasWeekly = (data.quizzes || []).some(
       (quiz) => quiz.title === SURVEY_TITLE && quiz.isActive
     );
-    if (hasWeekly) return;
+    const needsRoster = missingCurrentParticipants(students).length > 0
+      || students.some(
+        (s) =>
+          s.isActive === false
+          && CURRENT_PARTICIPANT_NAMES.some((n) => n.toLowerCase() === s.name.toLowerCase())
+      );
+    if (hasWeekly && !needsRoster) return;
     didSync.current = true;
-    void syncWeeklySurvey({
-      quizzes: (data.quizzes || []) as Quiz[],
-      questions: (data.questions || []).map((q) => ({
-        ...q,
-        type: q.type as Question["type"],
-      })),
-      students: (data.students || []) as Student[],
-    }).catch((err) => {
+    const sync = hasWeekly
+      ? ensureCurrentParticipants(students)
+      : syncWeeklySurvey({
+          quizzes: (data.quizzes || []) as Quiz[],
+          questions: (data.questions || []).map((q) => ({
+            ...q,
+            type: q.type as Question["type"],
+          })),
+          students,
+        });
+    void sync.catch((err) => {
       console.error("Could not refresh weekly survey:", err);
     });
   }, [isLoading, data]);

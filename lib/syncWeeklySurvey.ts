@@ -105,3 +105,40 @@ export async function syncWeeklySurvey({
 
   return { quizId };
 }
+
+export function missingCurrentParticipants(students: Student[]) {
+  const existing = new Set(students.map((s) => s.name.toLowerCase()));
+  return CURRENT_PARTICIPANT_NAMES.filter((name) => !existing.has(name.toLowerCase()));
+}
+
+export async function ensureCurrentParticipants(students: Student[]) {
+  const now = Date.now();
+  const existingByName = new Map(students.map((s) => [s.name.toLowerCase(), s]));
+  const txs = [];
+
+  for (const name of CURRENT_PARTICIPANT_NAMES) {
+    const match = existingByName.get(name.toLowerCase());
+    if (match) {
+      if (match.isActive === false) {
+        txs.push(
+          tx.students[match.id].update({
+            name: match.name,
+            createdAt: match.createdAt,
+            isActive: true,
+          })
+        );
+      }
+    } else {
+      txs.push(
+        tx.students[genId()].update({
+          name,
+          createdAt: now,
+          isActive: true,
+        })
+      );
+    }
+  }
+
+  if (txs.length === 0) return;
+  await db.transact(txs);
+}
