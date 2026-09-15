@@ -6,6 +6,7 @@ import { type Question, type Quiz } from "@/lib/instant";
 import { DEFAULT_SCALE_LABELS, SURVEY_INSTRUCTOR, SURVEY_SUPERVISOR } from "@/lib/survey";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { AppShell } from "./AppShell";
 
 interface SurveyExperienceProps {
   quiz: Quiz;
@@ -94,13 +95,13 @@ export function SurveyExperience({
 
   if (alreadyCompleted) {
     return (
-      <SurveyFrame>
+      <AppShell>
         <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--success)]/12">
+          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-white/70 shadow-[var(--shadow)] backdrop-blur-md">
             <CheckIcon className="h-8 w-8 text-[var(--success)]" />
           </div>
-          <h1 className="text-[28px] font-semibold tracking-tight">Already completed</h1>
-          <p className="mt-3 max-w-sm text-[17px] leading-relaxed text-[var(--muted)]">
+          <h1 className="font-display text-[32px] font-semibold tracking-tight">All set</h1>
+          <p className="mt-3 max-w-sm text-[16px] leading-relaxed text-[var(--muted)]">
             {greeting ? `${greeting}, you` : "You"} already submitted this week
             {weekLabel ? ` (${weekLabel})` : ""}. See you next week.
           </p>
@@ -110,59 +111,64 @@ export function SurveyExperience({
             </Button>
           </Link>
         </div>
-      </SurveyFrame>
+      </AppShell>
     );
   }
 
   if (step === -1) {
     return (
-      <SurveyFrame>
-        <header className="px-6 pt-8 sm:pt-12">
-          <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">
+      <AppShell>
+        <header className="px-6 pt-8 text-center">
+          <p className="text-[15px] font-medium tracking-wide text-[var(--foreground)]/80">
             Weekly check-in
           </p>
-          <h1 className="mt-2 text-[28px] font-semibold leading-tight tracking-tight sm:text-[34px]">
+          <h1 className="font-display mx-auto mt-4 max-w-[16ch] text-[32px] font-semibold leading-[1.12] tracking-tight">
             {quiz.title}
           </h1>
           {greeting && (
-            <p className="mt-3 text-[17px] text-[var(--primary)]">
+            <p className="mt-3 text-[16px] font-medium text-[var(--primary-dark)]">
               {greetingPrefix}
               {greeting}
             </p>
           )}
-          <p className="mt-4 text-[15px] leading-relaxed text-[var(--muted)] sm:text-[17px]">
-            {quiz.description || quiz.instructions}
+          <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-[var(--muted)]">
+            Think about this week's practice. Tap how often each feeling or action happened.
           </p>
         </header>
 
-        <div className="mt-8 px-6">
-          <div className="overflow-hidden rounded-[20px] bg-[var(--surface)] shadow-[var(--shadow)]">
-            <div className="border-b border-[var(--border)] px-5 py-4">
-              <p className="text-[13px] text-[var(--muted)]">Instructor</p>
-              <p className="text-[17px] font-medium">{SURVEY_INSTRUCTOR}</p>
-            </div>
-            <div className="px-5 py-4">
-              <p className="text-[13px] text-[var(--muted)]">Research supervisor</p>
-              <p className="text-[17px] font-medium">{SURVEY_SUPERVISOR}</p>
-            </div>
+        <div className="mt-7 px-5">
+          <div className="flex flex-wrap justify-center gap-2">
+            <span className="rounded-full bg-white/55 px-3 py-1 text-[12px] text-[var(--muted)] backdrop-blur-md">
+              {SURVEY_INSTRUCTOR}
+            </span>
+            <span className="rounded-full bg-white/55 px-3 py-1 text-[12px] text-[var(--muted)] backdrop-blur-md">
+              {SURVEY_SUPERVISOR}
+            </span>
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-[20px] bg-[var(--surface)] shadow-[var(--shadow)]">
-            <div className="px-5 py-4">
-              <p className="mb-3 text-[13px] font-medium text-[var(--muted)]">How often</p>
-              <ol className="space-y-2.5">
-                {scaleLabels.map((label, index) => (
-                  <li key={label} className="flex items-center justify-between text-[15px]">
-                    <span>{label}</span>
-                    <span className="tabular-nums text-[var(--muted)]">{scaleMin + index}</span>
-                  </li>
-                ))}
-              </ol>
+          <div className="mt-4 rounded-[28px] bg-white/70 p-4 shadow-[var(--shadow)] backdrop-blur-md">
+            <p className="mb-3 text-center text-[12px] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
+              How often
+            </p>
+            <div className="flex gap-1.5">
+              {scaleLabels.map((label, index) => (
+                <div
+                  key={label}
+                  className="flex min-h-[64px] flex-1 flex-col items-center justify-center rounded-[18px] bg-gradient-to-b from-[#fff7f2] to-[#fde8e2] px-1 text-center"
+                >
+                  <span className="text-[15px] font-semibold tabular-nums text-[var(--primary-dark)]">
+                    {scaleMin + index}
+                  </span>
+                  <span className="mt-0.5 text-[10px] leading-tight text-[var(--muted)]">
+                    {label}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        <div className="sticky bottom-0 mt-auto bg-[linear-gradient(to_top,var(--background)_70%,transparent)] px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-8">
+        <div className="sticky bottom-0 mt-auto bg-[linear-gradient(to_top,var(--background)_72%,transparent)] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-8">
           <Button
             size="lg"
             className="h-14 w-full rounded-full text-[17px] font-semibold"
@@ -171,7 +177,7 @@ export function SurveyExperience({
             Begin
           </Button>
         </div>
-      </SurveyFrame>
+      </AppShell>
     );
   }
 
@@ -183,43 +189,43 @@ export function SurveyExperience({
   const body = questionBody(current);
 
   return (
-    <SurveyFrame>
-      <header className="px-6 pt-5">
+    <AppShell>
+      <header className="px-5 pt-5">
         <div className="mb-4 flex items-center justify-between">
           <button
             type="button"
             onClick={() => setStep((s) => s - 1)}
-            className="flex min-h-11 min-w-11 items-center text-[17px] text-[var(--primary)]"
+            className="flex min-h-11 min-w-11 items-center text-[16px] font-medium text-[var(--primary-dark)]"
           >
             Back
           </button>
-          <span className="text-[13px] tabular-nums text-[var(--muted)]">
-            {step + 1} of {questions.length}
+          <span className="rounded-full bg-white/55 px-3 py-1 text-[12px] tabular-nums text-[var(--muted)] backdrop-blur-md">
+            {step + 1} / {questions.length}
           </span>
         </div>
-        <div className="h-1 overflow-hidden rounded-full bg-[var(--border)]">
+        <div className="h-1.5 overflow-hidden rounded-full bg-white/50">
           <div
-            className="h-full rounded-full bg-[var(--primary)] transition-all duration-300"
+            className="h-full rounded-full bg-gradient-to-r from-[#f3b3b0] to-[#e8926a] transition-all duration-300"
             style={{ width: `${((step + 1) / questions.length) * 100}%` }}
           />
         </div>
       </header>
 
-      <main className="flex-1 px-6 pt-8">
-        <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">
+      <main className="flex-1 px-5 pt-7">
+        <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">
           {title}
         </p>
-        <h2 className="mt-2 text-[22px] font-semibold leading-snug tracking-tight sm:text-[26px]">
+        <h2 className="font-display mt-2 text-[24px] font-semibold leading-snug tracking-tight">
           {body}
         </h2>
         {!current.required && (
-          <p className="mt-2 text-[15px] text-[var(--muted)]">Optional</p>
+          <p className="mt-2 text-[14px] text-[var(--muted)]">Optional</p>
         )}
 
-        <div className="mt-8">
+        <div className="mt-6">
           {current.type === "scale" && (
-            <div className="overflow-hidden rounded-[20px] bg-[var(--surface)] shadow-[var(--shadow)]">
-              {scaleOptions.map((option, index) => {
+            <div className="space-y-2.5">
+              {scaleOptions.map((option) => {
                 const selected = currentValue === option;
                 return (
                   <button
@@ -229,27 +235,19 @@ export function SurveyExperience({
                       setAnswers((prev) => ({ ...prev, [current.id]: option }))
                     }
                     className={cn(
-                      "flex min-h-[56px] w-full items-center justify-between px-5 text-left transition-colors",
-                      index !== scaleOptions.length - 1 && "border-b border-[var(--border)]",
+                      "flex min-h-[56px] w-full items-center justify-between rounded-[22px] px-4 text-left shadow-[var(--shadow)] transition-all",
                       selected
-                        ? "bg-[var(--accent-light)]"
-                        : "active:bg-[var(--surface-hover)]"
+                        ? "bg-gradient-to-r from-[#f4b183] to-[#e8926a] text-white"
+                        : "bg-white/75 backdrop-blur-md active:bg-[var(--surface-hover)]"
                     )}
                   >
-                    <span
-                      className={cn(
-                        "text-[17px]",
-                        selected ? "font-semibold text-[var(--primary)]" : "text-[var(--foreground)]"
-                      )}
-                    >
+                    <span className={cn("text-[16px]", selected && "font-semibold")}>
                       {scaleLabels[option - scaleMin] || option}
                     </span>
                     <span
                       className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-full text-[15px] font-semibold tabular-nums",
-                        selected
-                          ? "bg-[var(--primary)] text-white"
-                          : "bg-[var(--surface-hover)] text-[var(--muted)]"
+                        "flex h-8 w-8 items-center justify-center rounded-full text-[14px] font-semibold tabular-nums",
+                        selected ? "bg-white/25" : "bg-[#fde8e2] text-[var(--primary-dark)]"
                       )}
                     >
                       {selected ? <CheckIcon className="h-4 w-4" /> : option}
@@ -266,15 +264,15 @@ export function SurveyExperience({
               onChange={(e) =>
                 setAnswers((prev) => ({ ...prev, [current.id]: e.target.value }))
               }
-              placeholder="Type a short note, or skip."
+              placeholder="A short note, or skip."
               rows={5}
-              className="w-full resize-none rounded-[20px] border-0 bg-[var(--surface)] px-5 py-4 text-[17px] leading-relaxed shadow-[var(--shadow)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+              className="w-full resize-none rounded-[28px] border-0 bg-white/75 px-5 py-4 text-[16px] leading-relaxed shadow-[var(--shadow)] backdrop-blur-md placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
             />
           )}
 
           {current.type === "choice" && (
-            <div className="overflow-hidden rounded-[20px] bg-[var(--surface)] shadow-[var(--shadow)]">
-              {(current.options || []).map((option, index, arr) => {
+            <div className="space-y-2.5">
+              {(current.options || []).map((option) => {
                 const selected = currentValue === option;
                 return (
                   <button
@@ -284,20 +282,16 @@ export function SurveyExperience({
                       setAnswers((prev) => ({ ...prev, [current.id]: option }))
                     }
                     className={cn(
-                      "flex min-h-[56px] w-full items-center justify-between px-5 text-left",
-                      index !== arr.length - 1 && "border-b border-[var(--border)]",
-                      selected ? "bg-[var(--accent-light)]" : "active:bg-[var(--surface-hover)]"
+                      "flex min-h-[56px] w-full items-center justify-between rounded-[22px] px-4 text-left shadow-[var(--shadow)]",
+                      selected
+                        ? "bg-gradient-to-r from-[#f4b183] to-[#e8926a] text-white"
+                        : "bg-white/75 backdrop-blur-md"
                     )}
                   >
-                    <span
-                      className={cn(
-                        "text-[17px]",
-                        selected ? "font-semibold text-[var(--primary)]" : ""
-                      )}
-                    >
+                    <span className={cn("text-[16px]", selected && "font-semibold")}>
                       {option}
                     </span>
-                    {selected && <CheckIcon className="h-5 w-5 text-[var(--primary)]" />}
+                    {selected && <CheckIcon className="h-5 w-5" />}
                   </button>
                 );
               })}
@@ -306,7 +300,7 @@ export function SurveyExperience({
         </div>
       </main>
 
-      <div className="sticky bottom-0 bg-[linear-gradient(to_top,var(--background)_70%,transparent)] px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
+      <div className="sticky bottom-0 bg-[linear-gradient(to_top,var(--background)_72%,transparent)] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
         {error && (
           <p className="mb-3 text-center text-[15px] text-[var(--error)]">{error}</p>
         )}
@@ -324,19 +318,11 @@ export function SurveyExperience({
                 : "Skip and submit"
               : "Continue"}
         </Button>
-        <p className="mt-3 text-center text-[13px] text-[var(--muted)]">
-          {answeredRequired.length} of {requiredQuestions.length} required answered
+        <p className="mt-3 text-center text-[12px] text-[var(--muted)]">
+          {answeredRequired.length} of {requiredQuestions.length} required
         </p>
       </div>
-    </SurveyFrame>
-  );
-}
-
-function SurveyFrame({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col bg-[var(--background)] pt-[env(safe-area-inset-top)]">
-      {children}
-    </div>
+    </AppShell>
   );
 }
 
@@ -358,13 +344,13 @@ export function SurveyComplete({
   extraAction?: ReactNode;
 }) {
   return (
-    <SurveyFrame>
+    <AppShell>
       <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--success)]/12">
+        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-white/70 shadow-[var(--shadow)] backdrop-blur-md">
           <CheckIcon className="h-8 w-8 text-[var(--success)]" />
         </div>
-        <h1 className="text-[28px] font-semibold tracking-tight">Thank you</h1>
-        <p className="mt-3 max-w-sm text-[17px] leading-relaxed text-[var(--muted)]">
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">Thank you</h1>
+        <p className="mt-3 max-w-sm text-[16px] leading-relaxed text-[var(--muted)]">
           {message ||
             (name
               ? `${name}, your weekly response has been saved. See you next week.`
@@ -381,7 +367,7 @@ export function SurveyComplete({
           </Button>
         </Link>
       </div>
-    </SurveyFrame>
+    </AppShell>
   );
 }
 
@@ -397,23 +383,23 @@ export function SurveyState({
   actionLabel?: string;
 }) {
   return (
-    <SurveyFrame>
+    <AppShell>
       <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-        <h1 className="text-[28px] font-semibold tracking-tight">{title}</h1>
-        <p className="mt-3 max-w-sm text-[17px] leading-relaxed text-[var(--muted)]">{message}</p>
+        <h1 className="font-display text-[32px] font-semibold tracking-tight">{title}</h1>
+        <p className="mt-3 max-w-sm text-[16px] leading-relaxed text-[var(--muted)]">{message}</p>
         <Link href={actionHref} className="mt-8">
           <Button size="lg" className="min-w-[180px] rounded-full px-8">
             {actionLabel}
           </Button>
         </Link>
       </div>
-    </SurveyFrame>
+    </AppShell>
   );
 }
 
 export function SurveySpinner() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-[var(--background)]">
+    <div className="flex min-h-[100dvh] items-center justify-center">
       <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
     </div>
   );

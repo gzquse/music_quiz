@@ -7,7 +7,6 @@ import {
   CURRENT_PARTICIPANT_NAMES,
   isActiveParticipant,
   sortParticipants,
-  SURVEY_DESCRIPTION,
   SURVEY_TITLE,
 } from "@/lib/survey";
 import {
@@ -87,7 +86,7 @@ export default function HomePage() {
       students={students}
       quizId={studentQuiz.id}
       title={SURVEY_TITLE}
-      description={SURVEY_DESCRIPTION}
+      description="Think about this week's piano practice. Tap your name to begin."
     />
   );
 }

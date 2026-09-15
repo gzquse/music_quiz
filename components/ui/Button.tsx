@@ -18,9 +18,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           "disabled:opacity-50 disabled:cursor-not-allowed",
           {
             // Variants
-            "bg-[var(--primary)] text-white hover:bg-[var(--primary-light)] active:bg-[var(--primary-dark)]":
+            "bg-gradient-to-r from-[#f4b183] to-[#e8926a] text-white shadow-[var(--shadow)] hover:opacity-95 active:opacity-90":
               variant === "primary",
-            "bg-[var(--surface)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--surface-hover)]":
+            "bg-white/75 text-[var(--foreground)] backdrop-blur-md hover:bg-white":
               variant === "secondary",
             "bg-transparent text-[var(--foreground)] hover:bg-[var(--surface-hover)]":
               variant === "ghost",

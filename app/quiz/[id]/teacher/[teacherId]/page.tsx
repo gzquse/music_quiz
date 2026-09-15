@@ -10,6 +10,7 @@ import {
   SurveySpinner,
   SurveyState,
 } from "@/components/quiz";
+import { AppShell, personTone } from "@/components/quiz/AppShell";
 import { Button } from "@/components/ui";
 
 export default function TeacherQuizPage() {
@@ -116,36 +117,34 @@ export default function TeacherQuizPage() {
 
   if (!selectedStudentId) {
     return (
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col bg-[var(--background)] px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
-        <header className="pt-4">
-          <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">
+      <AppShell className="px-5 pb-[max(1.75rem,env(safe-area-inset-bottom))]">
+        <header className="px-1 pt-6 text-center">
+          <p className="text-[15px] font-medium tracking-wide text-[var(--foreground)]/80">
             {teacher.name}
           </p>
-          <h1 className="mt-2 text-[28px] font-semibold leading-tight tracking-tight">
-            {quiz.title}
+          <h1 className="font-display mx-auto mt-4 max-w-[16ch] text-[32px] font-semibold leading-[1.12] tracking-tight">
+            Choose a student
           </h1>
-          <p className="mt-3 text-[17px] text-[var(--muted)]">
-            Select the student you are assessing today.
+          <p className="mt-3 text-[15px] text-[var(--muted)]">
+            Who are you assessing today?
           </p>
         </header>
-        <div className="mt-8 overflow-hidden rounded-[20px] bg-[var(--surface)] shadow-[var(--shadow)]">
-          {assignedStudents.map((s, index) => (
+        <div className="mt-8 grid grid-cols-2 gap-3">
+          {assignedStudents.map((s) => (
             <button
               key={s.id}
               type="button"
               onClick={() => setSelectedStudentId(s.id)}
-              className={`flex min-h-[56px] w-full items-center justify-between px-5 text-left text-[17px] font-medium active:bg-[var(--surface-hover)] ${
-                index !== assignedStudents.length - 1 ? "border-b border-[var(--border)]" : ""
-              }`}
+              className={`relative flex min-h-[108px] flex-col justify-end overflow-hidden rounded-[28px] bg-gradient-to-br ${personTone(s.name)} p-4 text-left text-white shadow-[var(--shadow)] active:scale-[0.98] transition-transform`}
             >
-              {s.name}
-              <svg className="h-5 w-5 text-[var(--muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+              <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/25 text-[13px] font-semibold backdrop-blur-md">
+                {s.name.slice(0, 1)}
+              </span>
+              <span className="text-[18px] font-semibold leading-tight">{s.name}</span>
             </button>
           ))}
         </div>
-      </div>
+      </AppShell>
     );
   }
 
