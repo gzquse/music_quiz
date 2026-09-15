@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { type Student } from "@/lib/instant";
-import { SURVEY_INSTRUCTOR, SURVEY_SUPERVISOR, SURVEY_TITLE } from "@/lib/survey";
-import { AppShell, personTone } from "./AppShell";
+import { SURVEY_TITLE } from "@/lib/survey";
+import { AppShell, CreditCard, personTone } from "./AppShell";
 
 interface NamePickerProps {
   students: Student[];
@@ -30,13 +30,8 @@ export function NamePicker({
         <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-[var(--muted)]">
           {description}
         </p>
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-          <span className="rounded-full bg-white/55 px-3 py-1 text-[12px] text-[var(--muted)] backdrop-blur-md">
-            {SURVEY_INSTRUCTOR}
-          </span>
-          <span className="rounded-full bg-white/55 px-3 py-1 text-[12px] text-[var(--muted)] backdrop-blur-md">
-            {SURVEY_SUPERVISOR}
-          </span>
+        <div className="mt-5">
+          <CreditCard />
         </div>
       </header>
 

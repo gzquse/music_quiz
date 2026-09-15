@@ -9,5 +9,5 @@ export {
   SurveyState,
   SurveySpinner,
 } from "./SurveyExperience";
-export { AppShell, personTone } from "./AppShell";
+export { AppShell, CreditCard, personTone } from "./AppShell";
 

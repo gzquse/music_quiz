@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { SURVEY_INSTRUCTOR, SURVEY_SUPERVISOR } from "@/lib/survey";
 
 const CARD_TONES = [
   "from-[#f4c7b8] to-[#e8926a]",
@@ -33,6 +34,29 @@ export function AppShell({
       )}
     >
       {children}
+    </div>
+  );
+}
+
+export function CreditCard() {
+  return (
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[24px] bg-[#2b221c]/10 shadow-[var(--shadow)]">
+      <div className="bg-white px-4 py-3.5 text-center">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6a5348]">
+          Instructor
+        </p>
+        <p className="mt-1 text-[16px] font-semibold leading-tight text-[#2b221c]">
+          {SURVEY_INSTRUCTOR}
+        </p>
+      </div>
+      <div className="bg-white px-4 py-3.5 text-center">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6a5348]">
+          Supervisor
+        </p>
+        <p className="mt-1 text-[16px] font-semibold leading-tight text-[#2b221c]">
+          {SURVEY_SUPERVISOR}
+        </p>
+      </div>
     </div>
   );
 }

@@ -3,10 +3,10 @@
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { type Question, type Quiz } from "@/lib/instant";
-import { DEFAULT_SCALE_LABELS, SURVEY_INSTRUCTOR, SURVEY_SUPERVISOR } from "@/lib/survey";
+import { DEFAULT_SCALE_LABELS } from "@/lib/survey";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { AppShell } from "./AppShell";
+import { AppShell, CreditCard } from "./AppShell";
 
 interface SurveyExperienceProps {
   quiz: Quiz;
@@ -137,14 +137,7 @@ export function SurveyExperience({
         </header>
 
         <div className="mt-7 px-5">
-          <div className="flex flex-wrap justify-center gap-2">
-            <span className="rounded-full bg-white/55 px-3 py-1 text-[12px] text-[var(--muted)] backdrop-blur-md">
-              {SURVEY_INSTRUCTOR}
-            </span>
-            <span className="rounded-full bg-white/55 px-3 py-1 text-[12px] text-[var(--muted)] backdrop-blur-md">
-              {SURVEY_SUPERVISOR}
-            </span>
-          </div>
+          <CreditCard />
 
           <div className="mt-4 rounded-[28px] bg-white/70 p-4 shadow-[var(--shadow)] backdrop-blur-md">
             <p className="mb-3 text-center text-[12px] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
