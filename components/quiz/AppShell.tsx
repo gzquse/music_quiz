@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { SURVEY_INSTRUCTOR, SURVEY_SUPERVISOR } from "@/lib/survey";
 
@@ -44,25 +45,62 @@ export function AppShell({
   );
 }
 
-export function CreditCard() {
+export function CreditCard({
+  instructorHref,
+  supervisorHref,
+}: {
+  instructorHref?: string;
+  supervisorHref?: string;
+}) {
   return (
     <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[24px] bg-[#2b221c]/10 shadow-[var(--shadow)]">
-      <div className="bg-white px-4 py-3.5 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6a5348]">
-          Instructor
-        </p>
-        <p className="mt-1 text-[16px] font-semibold leading-tight text-[#2b221c]">
-          {SURVEY_INSTRUCTOR}
-        </p>
-      </div>
-      <div className="bg-white px-4 py-3.5 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6a5348]">
-          Supervisor
-        </p>
-        <p className="mt-1 text-[16px] font-semibold leading-tight text-[#2b221c]">
-          {SURVEY_SUPERVISOR}
-        </p>
-      </div>
+      <CreditCell
+        label="Instructor"
+        name={SURVEY_INSTRUCTOR}
+        href={instructorHref}
+      />
+      <CreditCell
+        label="Supervisor"
+        name={SURVEY_SUPERVISOR}
+        href={supervisorHref}
+      />
     </div>
+  );
+}
+
+function CreditCell({
+  label,
+  name,
+  href,
+}: {
+  label: string;
+  name: string;
+  href?: string;
+}) {
+  const content = (
+    <>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6a5348]">
+        {label}
+      </p>
+      <p className="mt-1 text-[16px] font-semibold leading-tight text-[#2b221c]">
+        {name}
+      </p>
+      {href && (
+        <p className="mt-1 text-[12px] font-medium text-[#b85a22]">Grade students</p>
+      )}
+    </>
+  );
+
+  if (!href) {
+    return <div className="bg-white px-4 py-3.5 text-center">{content}</div>;
+  }
+
+  return (
+    <Link
+      href={href}
+      className="bg-white px-4 py-3.5 text-center active:bg-[#fff4ee]"
+    >
+      {content}
+    </Link>
   );
 }

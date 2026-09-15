@@ -10,6 +10,8 @@ interface NamePickerProps {
   quizId: string;
   title?: string;
   description?: string;
+  instructorHref?: string;
+  supervisorHref?: string;
 }
 
 export function NamePicker({
@@ -17,6 +19,8 @@ export function NamePicker({
   quizId,
   title = SURVEY_TITLE,
   description = "One minute. Tap your name to begin.",
+  instructorHref,
+  supervisorHref,
 }: NamePickerProps) {
   return (
     <AppShell className="px-5 pb-[max(1.75rem,env(safe-area-inset-bottom))]">
@@ -31,13 +35,13 @@ export function NamePicker({
           {description}
         </p>
         <div className="mt-5">
-          <CreditCard />
+          <CreditCard instructorHref={instructorHref} supervisorHref={supervisorHref} />
         </div>
       </header>
 
       <section className="mt-8 flex-1">
         <h2 className="mb-3 px-1 text-[13px] font-medium text-[var(--muted)]">
-          Who are you?
+          Students
         </h2>
         {students.length === 0 ? (
           <p className="rounded-[28px] bg-white/70 px-5 py-8 text-center text-[15px] text-[var(--muted)] shadow-[var(--shadow)] backdrop-blur-md">

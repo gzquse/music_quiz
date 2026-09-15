@@ -32,6 +32,65 @@ Rating scale:
 4 = Often
 5 = Very often`;
 
+export const CURRENT_STAFF = [
+  { name: SURVEY_INSTRUCTOR, role: "Instructor" as const },
+  { name: SURVEY_SUPERVISOR, role: "Supervisor" as const },
+];
+
+export const TEACHER_WEEKLY_QUESTIONS = [
+  {
+    title: "Body Observation",
+    text: "During this student's piano practice this week, they noticed changes in how different parts of their body felt or moved.",
+    type: "scale" as const,
+    required: true,
+  },
+  {
+    title: "Body Connection",
+    text: "During this student's piano practice this week, they noticed connections between different parts of their body while playing.",
+    type: "scale" as const,
+    required: true,
+  },
+  {
+    title: "Experimentation",
+    text: "During this student's piano practice this week, they experimented with different ways of using their body while playing.",
+    type: "scale" as const,
+    required: true,
+  },
+  {
+    title: "Musical Outcome",
+    text: "When this student changed how they moved their body, their playing felt or sounded different.",
+    type: "scale" as const,
+    required: true,
+  },
+  {
+    title: "Application",
+    text: "During this student's piano practice this week, they consciously applied ideas about body movement from the class to their piano playing.",
+    type: "scale" as const,
+    required: true,
+  },
+  {
+    title: "Self-Correction",
+    text: "During this student's piano practice this week, they noticed and adjusted their movement when something felt tense, inefficient, or uncomfortable.",
+    type: "scale" as const,
+    required: true,
+  },
+  {
+    title: "Optional Brief Comment",
+    text: "If you noticed an important physical or musical change in this student's practice this week, please describe it briefly.",
+    type: "text" as const,
+    required: false,
+  },
+] as const;
+
+export function matchStaffName(personName: string, targetName: string) {
+  const person = personName.toLowerCase();
+  const target = targetName.toLowerCase();
+  if (person === target) return true;
+  if (target.includes("cash")) return person.includes("cash");
+  if (target.includes("xu")) return person.includes("xu") || person.includes("lingxi");
+  return person.includes(target) || target.includes(person);
+}
+
 export const WEEKLY_QUESTIONS = [
   {
     title: "Body Observation",

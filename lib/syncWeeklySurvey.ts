@@ -1,7 +1,10 @@
-import { db, tx, id as genId, type Question, type Quiz, type Student } from "@/lib/instant";
+import { db, tx, id as genId, type Question, type Quiz, type Student, type Teacher, type TeacherStudentAssignment } from "@/lib/instant";
 import {
   CURRENT_PARTICIPANT_NAMES,
+  CURRENT_STAFF,
   DEFAULT_SCALE_LABELS,
+  isActiveParticipant,
+  matchStaffName,
   SURVEY_DESCRIPTION,
   SURVEY_INSTRUCTIONS,
   SURVEY_TITLE,
@@ -136,6 +139,65 @@ export async function ensureCurrentParticipants(students: Student[]) {
           isActive: true,
         })
       );
+    }
+  }
+
+  if (txs.length === 0) return;
+  await db.transact(txs);
+}
+
+export function missingCurrentStaff(teachers: Teacher[]) {
+  return CURRENT_STAFF.filter(
+    (staff) => !teachers.some((teacher) => matchStaffName(teacher.name, staff.name))
+  );
+}
+
+export async function ensureCurrentStaff({
+  teachers,
+  students,
+  assignments,
+}: {
+  teachers: Teacher[];
+  students: Student[];
+  assignments: TeacherStudentAssignment[];
+}) {
+  const now = Date.now();
+  const txs = [];
+  const teacherIds: string[] = [];
+
+  for (const staff of CURRENT_STAFF) {
+    const match = teachers.find((teacher) => matchStaffName(teacher.name, staff.name));
+    if (match) {
+      teacherIds.push(match.id);
+      if (match.name !== staff.name) {
+        txs.push(tx.teachers[match.id].update({ name: staff.name }));
+      }
+    } else {
+      const teacherId = genId();
+      teacherIds.push(teacherId);
+      txs.push(
+        tx.teachers[teacherId].update({
+          name: staff.name,
+          createdAt: now,
+        })
+      );
+    }
+  }
+
+  const activeStudents = students.filter(isActiveParticipant);
+  for (const teacherId of teacherIds) {
+    for (const student of activeStudents) {
+      const exists = assignments.some(
+        (a) => a.teacherId === teacherId && a.studentId === student.id
+      );
+      if (!exists) {
+        txs.push(
+          tx.teacher_student_assignments[genId()].update({
+            teacherId,
+            studentId: student.id,
+          })
+        );
+      }
     }
   }
 

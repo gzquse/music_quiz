@@ -2,8 +2,17 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { db, tx, id as genId, type Question } from "@/lib/instant";
+import { db, tx, id as genId, type Question, type Quiz } from "@/lib/instant";
 import { getWeekFromStudyStart } from "@/lib/utils";
+import {
+  DEFAULT_SCALE_LABELS,
+  isActiveParticipant,
+  sortParticipants,
+  SURVEY_DESCRIPTION,
+  SURVEY_INSTRUCTIONS,
+  SURVEY_TITLE,
+  TEACHER_WEEKLY_QUESTIONS,
+} from "@/lib/survey";
 import {
   SurveyComplete,
   SurveyExperience,
@@ -32,16 +41,46 @@ export default function TeacherQuizPage() {
   const quiz = data?.quizzes?.[0];
   const teacher = data?.teachers?.[0];
   const assignments = data?.teacher_student_assignments || [];
-  const allStudents = data?.students || [];
-  const assignedStudents = assignments
-    .map((a) => allStudents.find((s) => s.id === a.studentId))
-    .filter((s): s is NonNullable<typeof s> => !!s);
+  const allStudents = sortParticipants(
+    (data?.students || []).filter(isActiveParticipant)
+  );
+  const assignedStudents = sortParticipants(
+    assignments
+      .map((a) => allStudents.find((s) => s.id === a.studentId))
+      .filter((s): s is NonNullable<typeof s> => !!s)
+  );
+  const studentsToGrade = assignedStudents.length > 0 ? assignedStudents : allStudents;
 
   const questions = (data?.questions || [])
     .map((q) => ({ ...q, type: q.type as Question["type"] }))
-    .sort((a, b) => a.order - b.order);
+    .sort((a, b) => a.order - b.order)
+    .map((q, index) => {
+      const weekly = TEACHER_WEEKLY_QUESTIONS[index];
+      if (!weekly) return q;
+      return {
+        ...q,
+        title: weekly.title,
+        text: weekly.text,
+        type: weekly.type,
+        required: weekly.required,
+      };
+    })
+    .slice(0, TEACHER_WEEKLY_QUESTIONS.length);
 
-  const selectedStudent = assignedStudents.find((s) => s.id === selectedStudentId);
+  const displayQuiz = quiz
+    ? ({
+        ...quiz,
+        title: SURVEY_TITLE,
+        description: SURVEY_DESCRIPTION,
+        instructions: SURVEY_INSTRUCTIONS,
+        scaleLabels: [...DEFAULT_SCALE_LABELS],
+        scaleMin: 1,
+        scaleMax: 5,
+        variant: "teacher" as const,
+      } satisfies Quiz)
+    : undefined;
+
+  const selectedStudent = studentsToGrade.find((s) => s.id === selectedStudentId);
 
   const handleSubmit = async (answers: Record<string, string | number>) => {
     if (!quiz || !teacher || !selectedStudentId) return;
@@ -86,7 +125,7 @@ export default function TeacherQuizPage() {
               setIsSubmitted(false);
             }}
           >
-            Fill for another student
+            Grade another student
           </Button>
         }
       />
@@ -97,7 +136,7 @@ export default function TeacherQuizPage() {
     return <SurveySpinner />;
   }
 
-  if (error || !quiz || !teacher) {
+  if (error || !quiz || !teacher || !displayQuiz) {
     return (
       <SurveyState
         title="Link not found"
@@ -106,7 +145,7 @@ export default function TeacherQuizPage() {
     );
   }
 
-  if (assignedStudents.length === 0) {
+  if (studentsToGrade.length === 0) {
     return (
       <SurveyState
         title="No students assigned"
@@ -123,14 +162,14 @@ export default function TeacherQuizPage() {
             {teacher.name}
           </p>
           <h1 className="font-display mx-auto mt-4 max-w-[16ch] text-[32px] font-semibold leading-[1.12] tracking-tight">
-            Choose a student
+            Grade a student
           </h1>
           <p className="mt-3 text-[15px] text-[var(--muted)]">
-            Who are you assessing today?
+            Choose who you are assessing this week.
           </p>
         </header>
         <div className="mt-8 grid grid-cols-2 gap-3">
-          {assignedStudents.map((s, index) => (
+          {studentsToGrade.map((s, index) => (
             <button
               key={s.id}
               type="button"
@@ -141,6 +180,7 @@ export default function TeacherQuizPage() {
                 {s.name.slice(0, 1)}
               </span>
               <span className="text-[18px] font-semibold leading-tight">{s.name}</span>
+              <span className="mt-1 text-[12px] text-white/80">Grade</span>
             </button>
           ))}
         </div>
@@ -150,7 +190,7 @@ export default function TeacherQuizPage() {
 
   return (
     <SurveyExperience
-      quiz={{ ...quiz, variant: (quiz.variant || "teacher") as "student" | "teacher" }}
+      quiz={displayQuiz}
       questions={questions}
       greeting={selectedStudent?.name}
       greetingPrefix="Assessing "
