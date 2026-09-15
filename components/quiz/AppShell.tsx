@@ -4,19 +4,25 @@ import { cn } from "@/lib/utils";
 import { SURVEY_INSTRUCTOR, SURVEY_SUPERVISOR } from "@/lib/survey";
 
 const CARD_TONES = [
-  "from-[#f4c7b8] to-[#e8926a]",
-  "from-[#f3b3b0] to-[#d48a86]",
-  "from-[#fde0c8] to-[#f4b183]",
-  "from-[#d8c3b0] to-[#b08968]",
-  "from-[#e8d5c4] to-[#c4a484]",
-  "from-[#f7c9c8] to-[#e8a0a4]",
+  "from-[#c45c6a] to-[#8e3d4a]",
+  "from-[#e07a3c] to-[#b85a22]",
+  "from-[#c4785b] to-[#8a4a34]",
+  "from-[#b8860b] to-[#8a6410]",
+  "from-[#8a5a78] to-[#5c3d52]",
+  "from-[#7a5640] to-[#4f3729]",
 ];
 
-export function personTone(name: string) {
-  const index = Math.abs(
-    name.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0)
-  ) % CARD_TONES.length;
-  return CARD_TONES[index];
+const NAMED_TONES: Record<string, string> = {
+  maria: CARD_TONES[0],
+  xinlin: CARD_TONES[1],
+  jacob: CARD_TONES[2],
+  ana: CARD_TONES[3],
+  heriberto: CARD_TONES[4],
+  david: CARD_TONES[5],
+};
+
+export function personTone(name: string, index = 0) {
+  return NAMED_TONES[name.toLowerCase()] ?? CARD_TONES[index % CARD_TONES.length];
 }
 
 export function AppShell({

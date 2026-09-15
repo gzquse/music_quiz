@@ -45,11 +45,11 @@ export function NamePicker({
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {students.map((student) => (
+            {students.map((student, index) => (
               <Link
                 key={student.id}
                 href={`/quiz/${quizId}/student/${student.id}`}
-                className={`relative flex min-h-[108px] flex-col justify-end overflow-hidden rounded-[28px] bg-gradient-to-br ${personTone(student.name)} p-4 text-white shadow-[var(--shadow)] active:scale-[0.98] transition-transform`}
+                className={`relative flex min-h-[108px] flex-col justify-end overflow-hidden rounded-[28px] bg-gradient-to-br ${personTone(student.name, index)} p-4 text-white shadow-[var(--shadow)] active:scale-[0.98] transition-transform`}
               >
                 <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/25 text-[13px] font-semibold backdrop-blur-md">
                   {student.name.slice(0, 1)}

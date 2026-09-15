@@ -130,12 +130,12 @@ export default function TeacherQuizPage() {
           </p>
         </header>
         <div className="mt-8 grid grid-cols-2 gap-3">
-          {assignedStudents.map((s) => (
+          {assignedStudents.map((s, index) => (
             <button
               key={s.id}
               type="button"
               onClick={() => setSelectedStudentId(s.id)}
-              className={`relative flex min-h-[108px] flex-col justify-end overflow-hidden rounded-[28px] bg-gradient-to-br ${personTone(s.name)} p-4 text-left text-white shadow-[var(--shadow)] active:scale-[0.98] transition-transform`}
+              className={`relative flex min-h-[108px] flex-col justify-end overflow-hidden rounded-[28px] bg-gradient-to-br ${personTone(s.name, index)} p-4 text-left text-white shadow-[var(--shadow)] active:scale-[0.98] transition-transform`}
             >
               <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/25 text-[13px] font-semibold backdrop-blur-md">
                 {s.name.slice(0, 1)}
