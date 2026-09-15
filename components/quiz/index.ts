@@ -9,5 +9,5 @@ export {
   SurveyState,
   SurveySpinner,
 } from "./SurveyExperience";
-export { AppShell, CreditCard, personTone } from "./AppShell";
+export { AddToHomeScreen } from "./AddToHomeScreen";
 

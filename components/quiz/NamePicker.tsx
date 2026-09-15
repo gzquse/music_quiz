@@ -4,6 +4,7 @@ import Link from "next/link";
 import { type Student } from "@/lib/instant";
 import { SURVEY_TITLE } from "@/lib/survey";
 import { AppShell, CreditCard, personTone } from "./AppShell";
+import { AddToHomeScreen } from "./AddToHomeScreen";
 
 interface NamePickerProps {
   students: Student[];
@@ -37,6 +38,7 @@ export function NamePicker({
         <div className="mt-5">
           <CreditCard instructorHref={instructorHref} supervisorHref={supervisorHref} />
         </div>
+        <AddToHomeScreen />
       </header>
 
       <section className="mt-8 flex-1">

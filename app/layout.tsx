@@ -21,13 +21,23 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Weekly Piano Practice Movement Questionnaire",
+  title: "Practice Survey",
+  applicationName: "Practice Survey",
   description:
     "A brief weekly survey about body movement during piano practice. Instructor: Lingxi Xu. Research supervisor: Dr. Carla Cash.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
-    title: "Practice Survey",
+    statusBarStyle: "black-translucent",
+    title: "Practice",
   },
   formatDetection: {
     telephone: false,
