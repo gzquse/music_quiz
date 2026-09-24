@@ -34,11 +34,17 @@ export function CoachGate({ children }: { children: ReactNode }) {
     );
   }
   if (auth.status === "error") {
+    // Names only; these values are public anyway (NEXT_PUBLIC_ ships to the browser).
+    const missing = [
+      !process.env.NEXT_PUBLIC_SUPABASE_URL && "NEXT_PUBLIC_SUPABASE_URL",
+      !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY && "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+    ].filter(Boolean);
     return (
       <CoachPage className="items-center justify-center text-center">
         <p className="text-[16px] font-semibold">Form Coach isn&apos;t configured yet</p>
         <p className="mt-2 max-w-xs text-[14px] text-[var(--muted)]">
-          Add the Supabase URL and publishable key to the environment, then redeploy.
+          This build is missing {missing.join(" and ") || "Supabase settings"}. Add it for the Preview and
+          Production environments, then redeploy.
         </p>
       </CoachPage>
     );
