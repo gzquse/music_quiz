@@ -18,6 +18,7 @@
     "plot-study": "python scripts/plot_study.py"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@instantdb/admin": "^0.22.96",
     "@instantdb/react": "^0.22.96",
     "clsx": "^2.1.1",
@@ -26,7 +27,8 @@
     "next-auth": "^4.24.13",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "recharts": "^3.6.0"
+    "recharts": "^3.6.0",
+    "stripe": "^22.6.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

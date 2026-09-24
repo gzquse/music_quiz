@@ -50,6 +50,53 @@ const schema = i.schema({
       questionId: i.string(),
       value: i.json<string | number>(),
     }),
+
+    // --- Form Coach (signed-in students; see lib/coach and instant.perms.ts) ---
+    // Written only by the server (billing + usage), readable by its owner.
+    coach_accounts: i.entity({
+      userId: i.string().unique().indexed(),
+      email: i.string().optional(),
+      createdAt: i.number(),
+      trialUsed: i.number(),
+      stripeCustomerId: i.string().optional().indexed(),
+      subscriptionId: i.string().optional(),
+      subscriptionStatus: i.string().optional(), // Stripe status: trialing | active | past_due | canceled | ...
+      periodStart: i.number().optional(),
+      periodEnd: i.number().optional(),
+      periodUsed: i.number().optional(),
+    }),
+    // The student's personal AI instructor, edited by its owner.
+    coach_instructors: i.entity({
+      userId: i.string().unique().indexed(),
+      name: i.string(),
+      color: i.number(),
+      tone: i.string(), // "warm" | "balanced" | "direct"
+      level: i.string(), // "beginner" | "intermediate" | "advanced" | "preprofessional"
+      focus: i.json<string[]>(),
+      notes: i.string(),
+      learnFromProfessor: i.boolean(),
+      updatedAt: i.number(),
+    }),
+    // One analyzed take. Created by the server; the owner adds professor feedback.
+    coach_sessions: i.entity({
+      userId: i.string().indexed(),
+      createdAt: i.number().indexed(),
+      piece: i.string().optional(),
+      goal: i.string().optional(),
+      durationSec: i.number(),
+      frameTimes: i.json<number[]>(),
+      thumbs: i.json<Record<string, string>>(),
+      loudness: i.json<number[]>(),
+      audio: i.json<Record<string, unknown> | null>(),
+      ai: i.json<Record<string, unknown>>(),
+      overall: i.number().optional(),
+      instructorName: i.string(),
+      model: i.string(),
+      professorName: i.string().optional(),
+      professorNotes: i.string().optional(),
+      professorScores: i.json<Record<string, number>>().optional(),
+      professorAt: i.number().optional(),
+    }),
   },
 });
 
