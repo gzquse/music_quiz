@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { CoachProvider, getSupabase } from "@/lib/coach/client";
+import { CoachProvider, getSupabase, initSupabase } from "@/lib/coach/client";
 import { CoachPage, PrimaryButton, Spinner } from "./ui";
 
 type AuthState = { status: "loading" } | { status: "ready"; session: Session | null } | { status: "error" };
@@ -12,18 +12,25 @@ export function CoachGate({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
 
   useEffect(() => {
-    let supabase: ReturnType<typeof getSupabase>;
-    try {
-      supabase = getSupabase();
-    } catch {
-      queueMicrotask(() => setAuth({ status: "error" }));
-      return;
-    }
-    supabase.auth.getSession().then(({ data }) => setAuth({ status: "ready", session: data.session }));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) =>
-      setAuth({ status: "ready", session })
-    );
-    return () => listener.subscription.unsubscribe();
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+    initSupabase()
+      .then(async (supabase) => {
+        const { data } = await supabase.auth.getSession();
+        if (cancelled) return;
+        setAuth({ status: "ready", session: data.session });
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) =>
+          setAuth({ status: "ready", session })
+        );
+        unsubscribe = () => listener.subscription.unsubscribe();
+      })
+      .catch(() => {
+        if (!cancelled) setAuth({ status: "error" });
+      });
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, []);
 
   if (auth.status === "loading") {
@@ -34,17 +41,12 @@ export function CoachGate({ children }: { children: ReactNode }) {
     );
   }
   if (auth.status === "error") {
-    // Names only; these values are public anyway (NEXT_PUBLIC_ ships to the browser).
-    const missing = [
-      !process.env.NEXT_PUBLIC_SUPABASE_URL && "SUPABASE_URL",
-      !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY && "SUPABASE_PUBLISHABLE_KEY",
-    ].filter(Boolean);
     return (
       <CoachPage className="items-center justify-center text-center">
         <p className="text-[16px] font-semibold">Form Coach isn&apos;t configured yet</p>
         <p className="mt-2 max-w-xs text-[14px] text-[var(--muted)]">
-          This build is missing {missing.join(" and ") || "Supabase settings"}. Add it for the Preview and
-          Production environments, then redeploy.
+          The server has no NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY for this
+          environment. Add both in Vercel for Preview and Production.
         </p>
       </CoachPage>
     );

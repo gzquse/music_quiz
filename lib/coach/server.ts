@@ -1,9 +1,8 @@
 // Server-only: Supabase admin access, signed-in user checks, and usage entitlements.
 
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { runtimeEnv } from "./env";
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const SECRET_KEY = process.env.SUPABASE_SECRET_KEY || "";
 
 export const FREE_ANALYSES = Number(process.env.COACH_FREE_ANALYSES ?? 3);
 export const PRO_MONTHLY_ANALYSES = Number(process.env.COACH_PRO_MONTHLY_ANALYSES ?? 30);
@@ -31,10 +30,13 @@ let admin: SupabaseClient | null = null;
 
 // The secret key bypasses row-level security, so it must only ever run on the server.
 export function adminDb() {
-  if (!SUPABASE_URL || !SECRET_KEY) {
+  if (admin) return admin;
+  const url = runtimeEnv("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL");
+  const secretKey = runtimeEnv("SUPABASE_SECRET_KEY");
+  if (!url || !secretKey) {
     throw new HttpError(500, "Server is missing Supabase credentials.");
   }
-  admin ??= createClient(SUPABASE_URL, SECRET_KEY, {
+  admin = createClient(url, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   return admin;

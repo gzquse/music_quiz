@@ -7,12 +7,27 @@ import { toInstructor, toSessionRecord, type InstructorRow, type SessionRecord, 
 
 let browserClient: SupabaseClient | null = null;
 
-// Created on first use so the app still builds when env vars are missing.
-export function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+// Uses the values built into the page when the build had them; otherwise asks the
+// server, which reads them at request time. Either way a late-added Vercel variable works.
+export async function initSupabase() {
+  if (browserClient) return browserClient;
+  let url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  let key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) {
+    const config = await fetch("/api/coach/config")
+      .then((res) => (res.ok ? res.json() : null))
+      .catch(() => null);
+    url = config?.url;
+    key = config?.key;
+  }
   if (!url || !key) throw new Error("Supabase is not configured.");
-  browserClient ??= createClient(url, key);
+  browserClient = createClient(url, key);
+  return browserClient;
+}
+
+// CoachGate awaits initSupabase() before rendering anything that calls this.
+export function getSupabase() {
+  if (!browserClient) throw new Error("Supabase is not ready yet.");
   return browserClient;
 }
 
