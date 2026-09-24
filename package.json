@@ -14,19 +14,23 @@
     "recover-surveys": "tsx scripts/recover-surveys.ts",
     "seed-participants": "tsx scripts/seed-participants.ts",
     "apply-weekly-survey": "tsx scripts/apply-weekly-survey.ts",
+    "backup": "tsx scripts/backup-cloud-data.ts",
     "export-study": "tsx scripts/export-study-data.ts",
     "plot-study": "python scripts/plot_study.py"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@instantdb/admin": "^0.22.96",
     "@instantdb/react": "^0.22.96",
+    "@supabase/supabase-js": "^2.117.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
     "next": "16.1.1",
     "next-auth": "^4.24.13",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "recharts": "^3.6.0"
+    "recharts": "^3.6.0",
+    "stripe": "^22.6.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

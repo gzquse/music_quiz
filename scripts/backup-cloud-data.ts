@@ -20,18 +20,40 @@ if (!APP_ID || !ADMIN_TOKEN) {
 
 const db = init({ appId: APP_ID, adminToken: ADMIN_TOKEN });
 
+const NAMESPACES = [
+  "quizzes",
+  "questions",
+  "students",
+  "teachers",
+  "teacher_student_assignments",
+  "responses",
+  "answers",
+  // Form Coach test data and sign-in accounts, if any exist on Instant.
+  "coach_accounts",
+  "coach_instructors",
+  "coach_sessions",
+  "$users",
+];
+
 async function backup() {
   console.log("Backing up cloud data (read-only)...");
 
-  const data = await db.query({
-    quizzes: {},
-    questions: {},
-    students: {},
-    teachers: {},
-    teacher_student_assignments: {},
-    responses: {},
-    answers: {},
-  });
+  // One table per request, with retries: a single query for everything can time out.
+  const data: Record<string, unknown[]> = {};
+  for (const name of NAMESPACES) {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const result = (await db.query({ [name]: {} })) as Record<string, unknown[]>;
+        data[name] = result[name] ?? [];
+        console.log(`  ${name}: ${data[name].length}`);
+        break;
+      } catch (err) {
+        if (attempt >= 4) throw err;
+        console.log(`  ${name}: attempt ${attempt} failed, retrying…`);
+        await new Promise((r) => setTimeout(r, attempt * 3000));
+      }
+    }
+  }
 
   const backupDir = join(process.cwd(), "backups");
   mkdirSync(backupDir, { recursive: true });
@@ -42,15 +64,10 @@ async function backup() {
 
   const backup = {
     exportedAt: new Date().toISOString(),
-    counts: {
-      quizzes: data.quizzes?.length ?? 0,
-      questions: data.questions?.length ?? 0,
-      students: data.students?.length ?? 0,
-      teachers: data.teachers?.length ?? 0,
-      teacher_student_assignments: data.teacher_student_assignments?.length ?? 0,
-      responses: data.responses?.length ?? 0,
-      answers: data.answers?.length ?? 0,
-    },
+    appId: APP_ID,
+    counts: Object.fromEntries(
+      Object.entries(data).map(([name, rows]) => [name, Array.isArray(rows) ? rows.length : 0])
+    ),
     data,
   };
 

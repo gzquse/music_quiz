@@ -29,6 +29,36 @@ ADMIN_EMAILS=your@email.com
 ADMIN_DEV_PASSWORD=your_password
 ```
 
+### Form Coach (`/coach`)
+
+The coach runs on Supabase (the survey stays on InstantDB). It needs:
+
+```bash
+# Supabase: Project Settings → API Keys
+# (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY also work; next.config.ts maps either.)
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...          # server only; bypasses row-level security
+
+# Claude API (server only — never expose to the browser)
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Stripe (payments). Leave unset to run with free analyses only.
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PRICE_ID=price_...          # the Pro monthly price
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_TRIAL_DAYS=0                # >0 adds a card-required free trial to Pro
+
+# Plan limits and display (optional; defaults shown)
+COACH_FREE_ANALYSES=3
+COACH_PRO_MONTHLY_ANALYSES=30
+COACH_PRICE_LABEL="$12.99 / month" # must match the Stripe price
+NEXT_PUBLIC_APP_URL=https://your-app.vercel.app   # for Stripe redirects; defaults to the request origin
+```
+
+Create the tables once: Supabase → SQL Editor → paste [supabase/migrations/20260924000000_form_coach.sql](supabase/migrations/20260924000000_form_coach.sql) → Run.
+See [docs/AI_COACH_GUIDE.md](docs/AI_COACH_GUIDE.md) for the full walkthrough.
+
 ## How to get these values:
 
 ### InstantDB
