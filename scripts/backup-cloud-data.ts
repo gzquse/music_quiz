@@ -20,23 +20,40 @@ if (!APP_ID || !ADMIN_TOKEN) {
 
 const db = init({ appId: APP_ID, adminToken: ADMIN_TOKEN });
 
+const NAMESPACES = [
+  "quizzes",
+  "questions",
+  "students",
+  "teachers",
+  "teacher_student_assignments",
+  "responses",
+  "answers",
+  // Form Coach test data and sign-in accounts, if any exist on Instant.
+  "coach_accounts",
+  "coach_instructors",
+  "coach_sessions",
+  "$users",
+];
+
 async function backup() {
   console.log("Backing up cloud data (read-only)...");
 
-  const data = await db.query({
-    quizzes: {},
-    questions: {},
-    students: {},
-    teachers: {},
-    teacher_student_assignments: {},
-    responses: {},
-    answers: {},
-    // Form Coach tables and sign-in accounts (needed to migrate off Instant Cloud).
-    coach_accounts: {},
-    coach_instructors: {},
-    coach_sessions: {},
-    $users: {},
-  });
+  // One table per request, with retries: a single query for everything can time out.
+  const data: Record<string, unknown[]> = {};
+  for (const name of NAMESPACES) {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const result = (await db.query({ [name]: {} })) as Record<string, unknown[]>;
+        data[name] = result[name] ?? [];
+        console.log(`  ${name}: ${data[name].length}`);
+        break;
+      } catch (err) {
+        if (attempt >= 4) throw err;
+        console.log(`  ${name}: attempt ${attempt} failed, retrying…`);
+        await new Promise((r) => setTimeout(r, attempt * 3000));
+      }
+    }
+  }
 
   const backupDir = join(process.cwd(), "backups");
   mkdirSync(backupDir, { recursive: true });
