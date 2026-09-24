@@ -2,7 +2,7 @@
 
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SECRET_KEY = process.env.SUPABASE_SECRET_KEY || "";
 
 export const FREE_ANALYSES = Number(process.env.COACH_FREE_ANALYSES ?? 3);

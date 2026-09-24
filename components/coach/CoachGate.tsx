@@ -36,8 +36,8 @@ export function CoachGate({ children }: { children: ReactNode }) {
   if (auth.status === "error") {
     // Names only; these values are public anyway (NEXT_PUBLIC_ ships to the browser).
     const missing = [
-      !process.env.NEXT_PUBLIC_SUPABASE_URL && "NEXT_PUBLIC_SUPABASE_URL",
-      !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY && "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      !process.env.NEXT_PUBLIC_SUPABASE_URL && "SUPABASE_URL",
+      !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY && "SUPABASE_PUBLISHABLE_KEY",
     ].filter(Boolean);
     return (
       <CoachPage className="items-center justify-center text-center">

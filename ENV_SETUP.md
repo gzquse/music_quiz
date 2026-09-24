@@ -35,8 +35,9 @@ The coach runs on Supabase (the survey stays on InstantDB). It needs:
 
 ```bash
 # Supabase: Project Settings → API Keys
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+# (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY also work; next.config.ts maps either.)
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 SUPABASE_SECRET_KEY=sb_secret_...          # server only; bypasses row-level security
 
 # Claude API (server only — never expose to the browser)
