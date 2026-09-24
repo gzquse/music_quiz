@@ -1,13 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import {
-  METRICS,
-  formatClock,
-  metricLabel,
-  scoreColor,
-  type CoachFeedback,
-} from "@/lib/coach/rubric";
+import { METRICS, formatClock, metricLabel, scoreColor } from "@/lib/coach/rubric";
+import type { SessionRecord } from "@/lib/coach/records";
 import { formatDate } from "@/lib/utils";
 import { Timeline } from "./Timeline";
 import { ProfessorPanel } from "./ProfessorPanel";
@@ -29,24 +24,9 @@ const CONFIDENCE = {
   low: "Limited view",
 } as const;
 
-export type SessionRecord = {
-  id: string;
-  createdAt: number;
-  piece?: string;
-  durationSec: number;
-  frameTimes: number[];
-  thumbs: Record<string, string>;
-  loudness: number[];
-  ai: CoachFeedback;
-  overall?: number;
-  instructorName: string;
-  professorName?: string;
-  professorNotes?: string;
-  professorScores?: Record<string, number>;
-};
 
 export function SessionView({
-  session,
+  session: initialSession,
   instructorColor,
   learnFromProfessor,
   initialTab = "coach",
@@ -57,6 +37,7 @@ export function SessionView({
   initialTab?: "coach" | "compare";
 }) {
   const [tab, setTab] = useState<"coach" | "compare">(initialTab);
+  const [session, setSession] = useState(initialSession);
   const ai = session.ai;
   const thumbs = session.thumbs ?? {};
   const frameTimes = session.frameTimes ?? [];
@@ -93,6 +74,7 @@ export function SessionView({
               professorScores: session.professorScores,
             }}
             learnFromProfessor={learnFromProfessor}
+            onSaved={(feedback) => setSession((s) => ({ ...s, ...feedback }))}
           />
         </div>
       ) : (

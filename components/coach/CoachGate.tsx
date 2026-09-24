@@ -1,23 +1,50 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { db } from "@/lib/instant";
-import { CoachProvider } from "@/lib/coach/client";
+import { useEffect, useState, type ReactNode } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { CoachProvider, getSupabase } from "@/lib/coach/client";
 import { CoachPage, PrimaryButton, Spinner } from "./ui";
 
-// Students sign in with a 6-digit email code (InstantDB magic codes), then see the coach.
-export function CoachGate({ children }: { children: ReactNode }) {
-  const { isLoading, user, error } = db.useAuth();
+type AuthState = { status: "loading" } | { status: "ready"; session: Session | null } | { status: "error" };
 
-  if (isLoading) {
+// Students sign in with a one-time email code (Supabase Auth), then see the coach.
+export function CoachGate({ children }: { children: ReactNode }) {
+  const [auth, setAuth] = useState<AuthState>({ status: "loading" });
+
+  useEffect(() => {
+    let supabase: ReturnType<typeof getSupabase>;
+    try {
+      supabase = getSupabase();
+    } catch {
+      queueMicrotask(() => setAuth({ status: "error" }));
+      return;
+    }
+    supabase.auth.getSession().then(({ data }) => setAuth({ status: "ready", session: data.session }));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) =>
+      setAuth({ status: "ready", session })
+    );
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  if (auth.status === "loading") {
     return (
       <CoachPage className="items-center justify-center">
         <Spinner />
       </CoachPage>
     );
   }
-  if (error || !user) return <SignIn />;
-  return <CoachProvider user={user}>{children}</CoachProvider>;
+  if (auth.status === "error") {
+    return (
+      <CoachPage className="items-center justify-center text-center">
+        <p className="text-[16px] font-semibold">Form Coach isn&apos;t configured yet</p>
+        <p className="mt-2 max-w-xs text-[14px] text-[var(--muted)]">
+          Add the Supabase URL and publishable key to the environment, then redeploy.
+        </p>
+      </CoachPage>
+    );
+  }
+  if (!auth.session) return <SignIn />;
+  return <CoachProvider user={auth.session.user}>{children}</CoachProvider>;
 }
 
 function SignIn() {
@@ -31,14 +58,21 @@ function SignIn() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    try {
-      await db.auth.sendMagicCode({ email: email.trim() });
-      setSentTo(email.trim());
-    } catch {
-      setError("Couldn't send the code. Check the email address.");
-    } finally {
-      setBusy(false);
+    const { error } = await getSupabase().auth.signInWithOtp({
+      email: email.trim(),
+      options: { shouldCreateUser: true },
+    });
+    setBusy(false);
+    if (error) {
+      console.error(error);
+      setError(
+        error.status === 429
+          ? "Too many codes requested. Please wait a few minutes and try again."
+          : "Couldn't send the code. Check the email address."
+      );
+      return;
     }
+    setSentTo(email.trim());
   };
 
   const verify = async (e: React.FormEvent) => {
@@ -46,12 +80,13 @@ function SignIn() {
     if (!sentTo) return;
     setBusy(true);
     setError(null);
-    try {
-      await db.auth.signInWithMagicCode({ email: sentTo, code: code.trim() });
-    } catch {
+    const { error } = await getSupabase().auth.verifyOtp({ email: sentTo, token: code.trim(), type: "email" });
+    if (error) {
+      console.error(error);
       setError("That code didn't work. Try again or resend it.");
       setBusy(false);
     }
+    // On success, CoachGate's auth listener swaps this screen for the coach.
   };
 
   return (
@@ -90,7 +125,7 @@ function SignIn() {
         ) : (
           <form onSubmit={verify} className="space-y-4">
             <p className="text-[15px] leading-relaxed text-[var(--muted)]">
-              We sent a 6-digit code to <span className="font-semibold text-[var(--foreground)]">{sentTo}</span>.
+              We sent a sign-in code to <span className="font-semibold text-[var(--foreground)]">{sentTo}</span>.
             </p>
             <input
               required
@@ -98,9 +133,9 @@ function SignIn() {
               inputMode="numeric"
               autoComplete="one-time-code"
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 10))}
               placeholder="123456"
-              className="h-14 w-full rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 text-center text-[26px] font-semibold tracking-[0.4em] outline-none focus:border-[var(--primary)]"
+              className="h-14 w-full rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 text-center text-[26px] font-semibold tracking-[0.3em] outline-none focus:border-[var(--primary)]"
             />
             <PrimaryButton type="submit" disabled={busy || code.length < 6}>
               {busy ? "Checking…" : "Sign in"}

@@ -31,6 +31,11 @@ async function backup() {
     teacher_student_assignments: {},
     responses: {},
     answers: {},
+    // Form Coach tables and sign-in accounts (needed to migrate off Instant Cloud).
+    coach_accounts: {},
+    coach_instructors: {},
+    coach_sessions: {},
+    $users: {},
   });
 
   const backupDir = join(process.cwd(), "backups");
@@ -42,15 +47,10 @@ async function backup() {
 
   const backup = {
     exportedAt: new Date().toISOString(),
-    counts: {
-      quizzes: data.quizzes?.length ?? 0,
-      questions: data.questions?.length ?? 0,
-      students: data.students?.length ?? 0,
-      teachers: data.teachers?.length ?? 0,
-      teacher_student_assignments: data.teacher_student_assignments?.length ?? 0,
-      responses: data.responses?.length ?? 0,
-      answers: data.answers?.length ?? 0,
-    },
+    appId: APP_ID,
+    counts: Object.fromEntries(
+      Object.entries(data).map(([name, rows]) => [name, Array.isArray(rows) ? rows.length : 0])
+    ),
     data,
   };
 

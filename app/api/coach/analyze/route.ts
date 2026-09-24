@@ -1,12 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import {
-  CAPTURE,
-  DEFAULT_INSTRUCTOR,
-  overallScore,
-  type AudioMetrics,
-  type CoachFeedback,
-  type InstructorSettings,
-} from "@/lib/coach/rubric";
+import { CAPTURE, overallScore, type AudioMetrics, type CoachFeedback } from "@/lib/coach/rubric";
+import { toInstructor, type InstructorRow } from "@/lib/coach/records";
 import {
   FEEDBACK_SCHEMA,
   SYSTEM_PROMPT,
@@ -21,9 +15,8 @@ import {
   entitlement,
   errorResponse,
   getOrCreateAccount,
-  id,
+  recordUsage,
   requireUser,
-  usageUpdate,
 } from "@/lib/coach/server";
 
 export const runtime = "nodejs";
@@ -77,39 +70,30 @@ function readBody(body: unknown): AnalyzeBody {
 }
 
 async function loadCoachContext(userId: string) {
-  const { coach_instructors, coach_sessions } = await adminDb.query({
-    coach_instructors: { $: { where: { userId } } },
-    coach_sessions: {
-      $: {
-        where: { userId },
-        fields: ["createdAt", "piece", "professorName", "professorNotes", "professorScores"],
-      },
-    },
-  });
-  const saved = coach_instructors[0];
-  const instructor: InstructorSettings = saved
-    ? {
-        name: saved.name || DEFAULT_INSTRUCTOR.name,
-        color: saved.color ?? 0,
-        tone: (saved.tone as InstructorSettings["tone"]) || DEFAULT_INSTRUCTOR.tone,
-        level: (saved.level as InstructorSettings["level"]) || DEFAULT_INSTRUCTOR.level,
-        focus: (saved.focus as InstructorSettings["focus"]) ?? [],
-        notes: (saved.notes || "").slice(0, 400),
-        learnFromProfessor: saved.learnFromProfessor ?? true,
-      }
-    : DEFAULT_INSTRUCTOR;
+  const db = adminDb();
+  const [instructorRes, notesRes] = await Promise.all([
+    db.from("coach_instructors").select("*").eq("user_id", userId).maybeSingle(),
+    db
+      .from("coach_sessions")
+      .select("created_at, piece, professor_name, professor_notes, professor_scores")
+      .eq("user_id", userId)
+      .not("professor_notes", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(3),
+  ]);
+  if (instructorRes.error) throw instructorRes.error;
+  if (notesRes.error) throw notesRes.error;
 
+  const instructor = toInstructor(instructorRes.data as InstructorRow | null);
   const professorNotes: ProfessorNote[] = instructor.learnFromProfessor
-    ? coach_sessions
-        .filter((s) => s.professorNotes?.trim())
-        .sort((a, b) => b.createdAt - a.createdAt)
-        .slice(0, 3)
+    ? (notesRes.data ?? [])
+        .filter((s) => s.professor_notes?.trim())
         .map((s) => ({
-          createdAt: s.createdAt,
-          piece: s.piece,
-          professorName: s.professorName,
-          notes: (s.professorNotes ?? "").slice(0, 800),
-          scores: s.professorScores,
+          createdAt: Date.parse(s.created_at),
+          piece: s.piece ?? undefined,
+          professorName: s.professor_name ?? undefined,
+          notes: (s.professor_notes ?? "").slice(0, 800),
+          scores: s.professor_scores ?? undefined,
         }))
     : [];
 
@@ -180,25 +164,26 @@ export async function POST(req: Request) {
       [...keep].filter((n) => body.thumbs[n - 1]).map((n) => [String(n), body.thumbs[n - 1]])
     );
 
-    const sessionId = id();
-    await adminDb.transact([
-      adminDb.tx.coach_sessions[sessionId].update({
-        userId: user.id,
-        createdAt: Date.now(),
-        piece: body.piece?.trim() || undefined,
-        goal: body.goal?.trim() || undefined,
-        durationSec: body.durationSec,
-        frameTimes: body.frames.map((f) => f.t),
+    const { data: saved, error: saveError } = await adminDb()
+      .from("coach_sessions")
+      .insert({
+        user_id: user.id,
+        piece: body.piece?.trim() || null,
+        goal: body.goal?.trim() || null,
+        duration_sec: body.durationSec,
+        frame_times: body.frames.map((f) => f.t),
         thumbs,
         loudness: body.loudness,
-        audio: body.audio as Record<string, unknown> | null,
-        ai: feedback as unknown as Record<string, unknown>,
-        overall: overallScore(feedback.metrics) ?? undefined,
-        instructorName: instructor.name,
+        audio: body.audio,
+        ai: feedback,
+        overall: overallScore(feedback.metrics),
+        instructor_name: instructor.name,
         model: response.model,
-      }),
-      usageUpdate(account, ent.via),
-    ]);
+      })
+      .select("id")
+      .single();
+    if (saveError) throw saveError;
+    await recordUsage(account, ent.via);
 
     console.info("coach.analyze", {
       user: user.id,
@@ -209,7 +194,7 @@ export async function POST(req: Request) {
     });
 
     const updated = await getOrCreateAccount(user);
-    return Response.json({ sessionId, account: accountSummary(updated) });
+    return Response.json({ sessionId: saved.id, account: accountSummary(updated) });
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) {
       return Response.json({ error: "The coach is busy right now. Please try again in a minute." }, { status: 429 });

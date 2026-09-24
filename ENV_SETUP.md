@@ -31,9 +31,14 @@ ADMIN_DEV_PASSWORD=your_password
 
 ### Form Coach (`/coach`)
 
-The coach needs `INSTANTDB_ADMIN_TOKEN` at runtime (not just for seeding), plus:
+The coach runs on Supabase (the survey stays on InstantDB). It needs:
 
 ```bash
+# Supabase: Project Settings → API Keys
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...          # server only; bypasses row-level security
+
 # Claude API (server only — never expose to the browser)
 ANTHROPIC_API_KEY=sk-ant-...
 
@@ -50,7 +55,7 @@ COACH_PRICE_LABEL="$12.99 / month" # must match the Stripe price
 NEXT_PUBLIC_APP_URL=https://your-app.vercel.app   # for Stripe redirects; defaults to the request origin
 ```
 
-Then push the schema and permissions: `npx instant-cli push schema` and `npx instant-cli push perms`.
+Create the tables once: Supabase → SQL Editor → paste [supabase/migrations/20260924000000_form_coach.sql](supabase/migrations/20260924000000_form_coach.sql) → Run.
 See [docs/AI_COACH_GUIDE.md](docs/AI_COACH_GUIDE.md) for the full walkthrough.
 
 ## How to get these values:

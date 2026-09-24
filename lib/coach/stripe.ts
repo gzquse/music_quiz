@@ -1,7 +1,7 @@
 // Server-only: Stripe client and the mapping from Stripe subscriptions to coach accounts.
 
 import Stripe from "stripe";
-import { HttpError, adminDb, type CoachAccount } from "./server";
+import { HttpError, adminDb, toAccount, type CoachAccount } from "./server";
 
 let client: Stripe | null = null;
 
@@ -22,17 +22,22 @@ export async function ensureCustomer(account: CoachAccount) {
     email: account.email,
     metadata: { userId: account.userId },
   });
-  await adminDb.transact(
-    adminDb.tx.coach_accounts[account.id].update({ stripeCustomerId: customer.id })
-  );
+  const { error } = await adminDb()
+    .from("coach_accounts")
+    .update({ stripe_customer_id: customer.id })
+    .eq("user_id", account.userId);
+  if (error) throw error;
   return customer.id;
 }
 
 export async function findAccountByCustomer(customerId: string) {
-  const { coach_accounts } = await adminDb.query({
-    coach_accounts: { $: { where: { stripeCustomerId: customerId } } },
-  });
-  return (coach_accounts[0] as CoachAccount | undefined) ?? null;
+  const { data, error } = await adminDb()
+    .from("coach_accounts")
+    .select("*")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? toAccount(data) : null;
 }
 
 // Stripe is the source of truth; every subscription event overwrites our copy.
@@ -48,13 +53,15 @@ export async function syncSubscription(subscription: Stripe.Subscription) {
   const periodStart = item?.current_period_start ? item.current_period_start * 1000 : undefined;
   const newPeriod = periodStart !== undefined && periodStart !== account.periodStart;
 
-  await adminDb.transact(
-    adminDb.tx.coach_accounts[account.id].update({
-      subscriptionId: subscription.id,
-      subscriptionStatus: subscription.status,
-      periodEnd: item?.current_period_end ? item.current_period_end * 1000 : undefined,
+  const { error } = await adminDb()
+    .from("coach_accounts")
+    .update({
+      subscription_id: subscription.id,
+      subscription_status: subscription.status,
+      period_end: item?.current_period_end ? new Date(item.current_period_end * 1000).toISOString() : null,
       // A new billing period resets the monthly allowance.
-      ...(newPeriod ? { periodStart, periodUsed: 0 } : {}),
+      ...(newPeriod ? { period_start: new Date(periodStart).toISOString(), period_used: 0 } : {}),
     })
-  );
+    .eq("user_id", account.userId);
+  if (error) throw error;
 }

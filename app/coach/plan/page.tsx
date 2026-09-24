@@ -15,7 +15,7 @@ export default function PlanPage() {
 }
 
 function Plan() {
-  const { user, account, refreshAccount } = useCoach();
+  const { account, refreshAccount } = useCoach();
   const checkout = useSearchParams().get("checkout");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +36,7 @@ function Plan() {
     setBusy(true);
     setError(null);
     try {
-      const { url } = await coachPost<{ url: string }>(path, user);
+      const { url } = await coachPost<{ url: string }>(path);
       window.location.href = url;
     } catch (err) {
       setError(err instanceof CoachApiError ? err.message : "Couldn't open billing. Please try again.");

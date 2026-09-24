@@ -1,25 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { db } from "@/lib/instant";
-import { useCoach, useCoachData } from "@/lib/coach/client";
-import { DEFAULT_INSTRUCTOR, LEVELS, METRICS, TONES, scoreColor } from "@/lib/coach/rubric";
+import { getSupabase, useCoach, useCoachData } from "@/lib/coach/client";
+import { LEVELS, METRICS, TONES, scoreColor } from "@/lib/coach/rubric";
 import { formatDate } from "@/lib/utils";
 import { Card, CoachPage, InstructorAvatar, ScoreChip, SectionLabel, Spinner } from "@/components/coach/ui";
 
 export default function CoachHome() {
   const { user, account } = useCoach();
-  const { isLoading, data } = useCoachData(user.id);
-
-  const saved = data?.coach_instructors?.[0];
-  const instructor = {
-    name: saved?.name ?? DEFAULT_INSTRUCTOR.name,
-    color: saved?.color ?? DEFAULT_INSTRUCTOR.color,
-    tone: saved?.tone ?? DEFAULT_INSTRUCTOR.tone,
-    level: saved?.level ?? DEFAULT_INSTRUCTOR.level,
-    focus: (saved?.focus as string[] | undefined) ?? [],
-  };
-  const sessions = [...(data?.coach_sessions ?? [])].sort((a, b) => b.createdAt - a.createdAt);
+  const { isLoading, instructor, sessions } = useCoachData(user.id);
   const scored = sessions.filter((s) => typeof s.overall === "number").reverse();
 
   const planLabel = !account
@@ -36,7 +25,7 @@ export default function CoachHome() {
         <p className="text-[15px] font-medium tracking-wide text-[var(--foreground)]/80">Form Coach</p>
         <button
           type="button"
-          onClick={() => db.auth.signOut()}
+          onClick={() => void getSupabase().auth.signOut()}
           className="min-h-11 px-1 text-[14px] font-medium text-[var(--muted)]"
         >
           Sign out

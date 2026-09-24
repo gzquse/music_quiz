@@ -2,31 +2,37 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { db, tx } from "@/lib/instant";
+import { getSupabase } from "@/lib/coach/client";
+import type { ProfessorFeedback } from "@/lib/coach/records";
 import { METRICS, scoreColor, type CoachFeedback, type MetricKey } from "@/lib/coach/rubric";
 import { cn } from "@/lib/utils";
 import { Card, PrimaryButton, ScoreSegments, SecondaryButton, SectionLabel } from "./ui";
-
-type ProfessorFeedback = {
-  professorName?: string;
-  professorNotes?: string;
-  professorScores?: Record<string, number>;
-};
 
 export function ProfessorPanel({
   sessionId,
   ai,
   saved,
   learnFromProfessor,
+  onSaved,
 }: {
   sessionId: string;
   ai: CoachFeedback;
   saved: ProfessorFeedback;
   learnFromProfessor: boolean;
+  onSaved: (feedback: ProfessorFeedback) => void;
 }) {
   const [editing, setEditing] = useState(!saved.professorNotes);
   if (editing) {
-    return <ProfessorForm sessionId={sessionId} saved={saved} onSaved={() => setEditing(false)} />;
+    return (
+      <ProfessorForm
+        sessionId={sessionId}
+        saved={saved}
+        onSaved={(feedback) => {
+          onSaved(feedback);
+          setEditing(false);
+        }}
+      />
+    );
   }
   return (
     <Compare ai={ai} saved={saved} learnFromProfessor={learnFromProfessor} onEdit={() => setEditing(true)} />
@@ -40,7 +46,7 @@ function ProfessorForm({
 }: {
   sessionId: string;
   saved: ProfessorFeedback;
-  onSaved: () => void;
+  onSaved: (feedback: ProfessorFeedback) => void;
 }) {
   const [name, setName] = useState(saved.professorName ?? "");
   const [notes, setNotes] = useState(saved.professorNotes ?? "");
@@ -51,22 +57,27 @@ function ProfessorForm({
   const save = async () => {
     setBusy(true);
     setError(null);
-    try {
-      await db.transact(
-        tx.coach_sessions[sessionId].update({
-          professorName: name.trim() || undefined,
-          professorNotes: notes.trim(),
-          professorScores: scores,
-          professorAt: Date.now(),
-        })
-      );
-      onSaved();
-    } catch (err) {
-      console.error(err);
+    const feedback: ProfessorFeedback = {
+      professorName: name.trim() || undefined,
+      professorNotes: notes.trim(),
+      professorScores: scores,
+    };
+    const { error } = await getSupabase()
+      .from("coach_sessions")
+      .update({
+        professor_name: feedback.professorName ?? null,
+        professor_notes: feedback.professorNotes,
+        professor_scores: feedback.professorScores,
+        professor_at: new Date().toISOString(),
+      })
+      .eq("id", sessionId);
+    setBusy(false);
+    if (error) {
+      console.error(error);
       setError("Couldn't save. Please try again.");
-    } finally {
-      setBusy(false);
+      return;
     }
+    onSaved(feedback);
   };
 
   return (

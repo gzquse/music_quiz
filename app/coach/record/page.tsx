@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CoachApiError, coachPost, useCoach, useCoachData } from "@/lib/coach/client";
 import { prepareTake, readVideoDuration } from "@/lib/coach/media";
-import { CAPTURE, DEFAULT_INSTRUCTOR, formatClock } from "@/lib/coach/rubric";
+import { CAPTURE, formatClock } from "@/lib/coach/rubric";
 import type { AccountSummary } from "@/lib/coach/server";
 import { Recorder } from "@/components/coach/Recorder";
 import {
@@ -24,9 +24,8 @@ type Progress = "frames" | "audio" | "review";
 export default function RecordPage() {
   const router = useRouter();
   const { user, account, setAccount } = useCoach();
-  const { data } = useCoachData(user.id);
-  const instructor = data?.coach_instructors?.[0];
-  const instructorName = instructor?.name ?? DEFAULT_INSTRUCTOR.name;
+  const { instructor } = useCoachData(user.id);
+  const instructorName = instructor.name;
 
   const [step, setStep] = useState<Step>("setup");
   const [piece, setPiece] = useState("");
@@ -75,7 +74,7 @@ export default function RecordPage() {
     try {
       const prepared = await prepareTake(take.blob, take.seconds, setProgress);
       setProgress("review");
-      const res = await coachPost<{ sessionId: string; account: AccountSummary }>("/api/coach/analyze", user, {
+      const res = await coachPost<{ sessionId: string; account: AccountSummary }>("/api/coach/analyze", {
         ...prepared,
         piece: piece.trim() || undefined,
         goal: goal.trim() || undefined,
@@ -114,7 +113,7 @@ export default function RecordPage() {
       <CoachPage className="justify-center">
         <div className="flex flex-col items-center text-center">
           <div className="relative">
-            <InstructorAvatar name={instructorName} color={instructor?.color ?? 0} size={84} />
+            <InstructorAvatar name={instructorName} color={instructor.color} size={84} />
             <span className="absolute -inset-2 animate-ping rounded-full border-2 border-[var(--primary-light)] opacity-40" />
           </div>
           <h1 className="font-display mt-7 text-[28px] font-semibold tracking-tight">Reviewing your take</h1>

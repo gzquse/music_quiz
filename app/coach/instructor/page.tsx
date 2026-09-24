@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { db, id, tx } from "@/lib/instant";
-import { useCoach, useCoachData } from "@/lib/coach/client";
+import { getSupabase, useCoach, useCoachData } from "@/lib/coach/client";
+import { toInstructorRow } from "@/lib/coach/records";
 import {
   DEFAULT_INSTRUCTOR,
   INSTRUCTOR_COLORS,
@@ -29,8 +29,7 @@ import {
 
 export default function InstructorPage() {
   const { user } = useCoach();
-  const { isLoading, data } = useCoachData(user.id);
-  const saved = data?.coach_instructors?.[0];
+  const { isLoading, instructor } = useCoachData(user.id);
 
   if (isLoading) {
     return (
@@ -40,30 +39,10 @@ export default function InstructorPage() {
     );
   }
 
-  const initial: InstructorSettings = saved
-    ? {
-        name: saved.name,
-        color: saved.color,
-        tone: saved.tone as InstructorSettings["tone"],
-        level: saved.level as InstructorSettings["level"],
-        focus: (saved.focus ?? []) as MetricKey[],
-        notes: saved.notes,
-        learnFromProfessor: saved.learnFromProfessor,
-      }
-    : DEFAULT_INSTRUCTOR;
-
-  return <InstructorForm key={saved?.id ?? "new"} userId={user.id} savedId={saved?.id} initial={initial} />;
+  return <InstructorForm userId={user.id} initial={instructor} />;
 }
 
-function InstructorForm({
-  userId,
-  savedId,
-  initial,
-}: {
-  userId: string;
-  savedId?: string;
-  initial: InstructorSettings;
-}) {
+function InstructorForm({ userId, initial }: { userId: string; initial: InstructorSettings }) {
   const router = useRouter();
   const [form, setForm] = useState<InstructorSettings>(initial);
   const [busy, setBusy] = useState(false);
@@ -85,22 +64,16 @@ function InstructorForm({
   const save = async () => {
     setBusy(true);
     setError(null);
-    try {
-      await db.transact(
-        tx.coach_instructors[savedId ?? id()].update({
-          ...form,
-          name: form.name.trim() || DEFAULT_INSTRUCTOR.name,
-          notes: form.notes.trim(),
-          userId,
-          updatedAt: Date.now(),
-        })
-      );
-      router.push("/coach");
-    } catch (err) {
-      console.error(err);
+    const { error } = await getSupabase()
+      .from("coach_instructors")
+      .upsert(toInstructorRow(userId, form), { onConflict: "user_id" });
+    if (error) {
+      console.error(error);
       setError("Couldn't save. Please try again.");
       setBusy(false);
+      return;
     }
+    router.push("/coach");
   };
 
   const tone = TONES.find((t) => t.value === form.tone) ?? TONES[1];

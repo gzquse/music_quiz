@@ -1,13 +1,9 @@
-// Server-only: InstantDB admin access, signed-in user checks, and usage entitlements.
+// Server-only: Supabase admin access, signed-in user checks, and usage entitlements.
 
-import { init, id, type User } from "@instantdb/admin";
-import schema from "@/instant.schema";
+import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 
-const APP_ID = process.env.NEXT_PUBLIC_INSTANTDB_APP_ID || "";
-const ADMIN_TOKEN = process.env.INSTANTDB_ADMIN_TOKEN || "";
-
-export const adminDb = init({ appId: APP_ID, adminToken: ADMIN_TOKEN, schema });
-export { id };
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const SECRET_KEY = process.env.SUPABASE_SECRET_KEY || "";
 
 export const FREE_ANALYSES = Number(process.env.COACH_FREE_ANALYSES ?? 3);
 export const PRO_MONTHLY_ANALYSES = Number(process.env.COACH_PRO_MONTHLY_ANALYSES ?? 30);
@@ -31,61 +27,83 @@ export function errorResponse(err: unknown) {
   return Response.json({ error: "Something went wrong. Please try again." }, { status: 500 });
 }
 
-// The browser sends the InstantDB refresh token of the signed-in student.
-export async function requireUser(req: Request): Promise<User> {
-  if (!APP_ID || !ADMIN_TOKEN) {
-    throw new HttpError(500, "Server is missing InstantDB credentials.");
+let admin: SupabaseClient | null = null;
+
+// The secret key bypasses row-level security, so it must only ever run on the server.
+export function adminDb() {
+  if (!SUPABASE_URL || !SECRET_KEY) {
+    throw new HttpError(500, "Server is missing Supabase credentials.");
   }
+  admin ??= createClient(SUPABASE_URL, SECRET_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  return admin;
+}
+
+// The browser sends the signed-in student's Supabase access token.
+export async function requireUser(req: Request): Promise<User> {
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) throw new HttpError(401, "Please sign in.");
-  try {
-    return await adminDb.auth.verifyToken(token);
-  } catch {
-    throw new HttpError(401, "Your session expired. Please sign in again.");
-  }
+  const { data, error } = await adminDb().auth.getUser(token);
+  if (error || !data.user) throw new HttpError(401, "Your session expired. Please sign in again.");
+  return data.user;
 }
 
 export type CoachAccount = {
-  id: string;
   userId: string;
   email?: string;
-  createdAt: number;
   trialUsed: number;
   stripeCustomerId?: string;
   subscriptionId?: string;
   subscriptionStatus?: string;
   periodStart?: number;
   periodEnd?: number;
-  periodUsed?: number;
+  periodUsed: number;
 };
 
+type AccountRow = {
+  user_id: string;
+  email: string | null;
+  trial_used: number;
+  stripe_customer_id: string | null;
+  subscription_id: string | null;
+  subscription_status: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  period_used: number;
+};
+
+export function toAccount(row: AccountRow): CoachAccount {
+  return {
+    userId: row.user_id,
+    email: row.email ?? undefined,
+    trialUsed: row.trial_used ?? 0,
+    stripeCustomerId: row.stripe_customer_id ?? undefined,
+    subscriptionId: row.subscription_id ?? undefined,
+    subscriptionStatus: row.subscription_status ?? undefined,
+    periodStart: row.period_start ? Date.parse(row.period_start) : undefined,
+    periodEnd: row.period_end ? Date.parse(row.period_end) : undefined,
+    periodUsed: row.period_used ?? 0,
+  };
+}
+
 async function findAccount(userId: string) {
-  const { coach_accounts } = await adminDb.query({
-    coach_accounts: { $: { where: { userId } } },
-  });
-  return (coach_accounts[0] as CoachAccount | undefined) ?? null;
+  const { data, error } = await adminDb().from("coach_accounts").select("*").eq("user_id", userId).maybeSingle();
+  if (error) throw error;
+  return data ? toAccount(data as AccountRow) : null;
 }
 
 export async function getOrCreateAccount(user: User): Promise<CoachAccount> {
   const existing = await findAccount(user.id);
   if (existing) return existing;
-
-  const account = {
-    userId: user.id,
-    email: user.email ?? undefined,
-    createdAt: Date.now(),
-    trialUsed: 0,
-  };
-  const accountId = id();
-  try {
-    await adminDb.transact(adminDb.tx.coach_accounts[accountId].update(account));
-  } catch (err) {
-    // A parallel first request may have created it (userId is unique).
-    const created = await findAccount(user.id);
-    if (created) return created;
-    throw err;
-  }
-  return { id: accountId, ...account };
+  // ignoreDuplicates makes a parallel first request harmless.
+  const { error } = await adminDb()
+    .from("coach_accounts")
+    .upsert({ user_id: user.id, email: user.email }, { onConflict: "user_id", ignoreDuplicates: true });
+  if (error) throw error;
+  const created = await findAccount(user.id);
+  if (!created) throw new HttpError(500, "Could not create your account.");
+  return created;
 }
 
 export function isPro(account: CoachAccount) {
@@ -98,7 +116,7 @@ export type Entitlement =
 
 function currentPeriod(account: CoachAccount, now: number) {
   const start = account.periodStart ?? 0;
-  if (now - start < PERIOD_MS) return { start, used: account.periodUsed ?? 0 };
+  if (now - start < PERIOD_MS) return { start, used: account.periodUsed };
   return { start: now, used: 0 };
 }
 
@@ -110,19 +128,23 @@ export function entitlement(account: CoachAccount, now = Date.now()): Entitlemen
       ? { allowed: true, via: "pro", remaining }
       : { allowed: false, reason: "monthly_limit", remaining: 0 };
   }
-  const remaining = FREE_ANALYSES - (account.trialUsed ?? 0);
+  const remaining = FREE_ANALYSES - account.trialUsed;
   return remaining > 0
     ? { allowed: true, via: "trial", remaining }
     : { allowed: false, reason: "trial_used", remaining: 0 };
 }
 
 // Called only after an analysis succeeded, so failed requests never cost the student.
-export function usageUpdate(account: CoachAccount, via: "pro" | "trial", now = Date.now()) {
+export async function recordUsage(account: CoachAccount, via: "pro" | "trial", now = Date.now()) {
+  let update: Record<string, unknown>;
   if (via === "trial") {
-    return adminDb.tx.coach_accounts[account.id].update({ trialUsed: (account.trialUsed ?? 0) + 1 });
+    update = { trial_used: account.trialUsed + 1 };
+  } else {
+    const { start, used } = currentPeriod(account, now);
+    update = { period_start: new Date(start).toISOString(), period_used: used + 1 };
   }
-  const { start, used } = currentPeriod(account, now);
-  return adminDb.tx.coach_accounts[account.id].update({ periodStart: start, periodUsed: used + 1 });
+  const { error } = await adminDb().from("coach_accounts").update(update).eq("user_id", account.userId);
+  if (error) throw error;
 }
 
 export function accountSummary(account: CoachAccount) {

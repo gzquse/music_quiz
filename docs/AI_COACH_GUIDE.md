@@ -102,7 +102,7 @@ These are estimates. The route logs real token counts on every call (`coach.anal
 
 **Margin check at $12.99/month:** Stripe takes about 2.9% + 30¢, which leaves ≈ $12.31. A student who maxes out 30 analyses costs ≈ $8, still profitable. A typical 8–10 analyses cost ≈ $2.50.
 
-**Who can change what:** balances live in `coach_accounts`, which only the server can write ([instant.perms.ts](../instant.perms.ts)), so a student can't edit their own credits from the browser.
+**Who can change what:** balances live in `coach_accounts`. Supabase row-level security ([the migration](../supabase/migrations/20260924000000_form_coach.sql)) lets students read that row but only the server can change it, so a student can't edit their own credits from the browser.
 
 ### Stripe setup (test mode first)
 
@@ -120,11 +120,12 @@ These are estimates. The route logs real token counts on every call (`coach.anal
 ## 6. Setup checklist
 
 1. Get an API key: Claude Console (platform.claude.com) → API Keys. Set `ANTHROPIC_API_KEY` and a monthly spend limit.
-2. Set `INSTANTDB_ADMIN_TOKEN` (InstantDB dashboard → Admin Tokens).
-3. Push the database changes: `npx instant-cli push schema`, then `npx instant-cli push perms`. The perms file only restricts the coach tables; the survey tables keep their current open rules. Review the diff it shows before confirming.
-4. Add the Stripe variables (section 5), or leave them unset to launch with free analyses only.
-5. Deploy to Vercel. The analyze route allows up to 300 s (`maxDuration`); request bodies stay under Vercel's 4.5 MB limit.
-6. On an iPhone: open `/coach` in Safari → Share → Add to Home Screen. It installs as "Form Coach".
+2. Create a Supabase project and set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SECRET_KEY` (Project Settings → API Keys).
+3. Create the tables: Supabase → SQL Editor → paste `supabase/migrations/20260924000000_form_coach.sql` → Run.
+4. Sign-in codes: Authentication → Email Templates → Magic Link, and put `{{ .Token }}` in the email so students receive a 6-digit code. Before real students sign up, add your own email sender under Authentication → SMTP Settings; the built-in one only emails your project team, 2 per hour.
+5. Add the Stripe variables (section 5), or leave them unset to launch with free analyses only.
+6. Deploy to Vercel. The analyze route allows up to 300 s (`maxDuration`); request bodies stay under Vercel's 4.5 MB limit.
+7. On an iPhone: open `/coach` in Safari → Share → Add to Home Screen. It installs as "Form Coach".
 
 ## 7. Before real students use it
 
