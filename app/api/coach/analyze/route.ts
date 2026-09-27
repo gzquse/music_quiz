@@ -15,8 +15,10 @@ import {
   entitlement,
   errorResponse,
   getOrCreateAccount,
+  recordSpend,
   recordUsage,
   requireUser,
+  type SpendStatus,
 } from "@/lib/coach/server";
 
 export const runtime = "nodejs";
@@ -145,56 +147,59 @@ export async function POST(req: Request) {
       ],
     });
 
-    if (response.stop_reason === "refusal") {
-      throw new HttpError(422, "This recording couldn't be reviewed. Please try another take.");
+    // Every call is billed whatever happens next, so log its cost on the way out.
+    let outcome: SpendStatus = "error";
+    let sessionId: string | null = null;
+    try {
+      if (response.stop_reason === "refusal") {
+        outcome = "refusal";
+        throw new HttpError(422, "This recording couldn't be reviewed. Please try another take.");
+      }
+      if (response.stop_reason === "max_tokens") {
+        outcome = "max_tokens";
+        throw new HttpError(502, "The review was cut short. Please try again.");
+      }
+      const text = response.content.find((block) => block.type === "text");
+      if (!text || text.type !== "text") {
+        throw new HttpError(502, "The review came back empty. Please try again.");
+      }
+
+      const feedback = tidyFeedback(JSON.parse(text.text) as CoachFeedback, body.frames.length);
+
+      // Keep a cover image and the frames the priorities point to; drop the rest.
+      const keep = new Set([Math.ceil(body.frames.length / 2), ...feedback.priorities.map((p) => p.frame)]);
+      const thumbs = Object.fromEntries(
+        [...keep].filter((n) => body.thumbs[n - 1]).map((n) => [String(n), body.thumbs[n - 1]])
+      );
+
+      const { data: saved, error: saveError } = await adminDb()
+        .from("coach_sessions")
+        .insert({
+          user_id: user.id,
+          piece: body.piece?.trim() || null,
+          goal: body.goal?.trim() || null,
+          duration_sec: body.durationSec,
+          frame_times: body.frames.map((f) => f.t),
+          thumbs,
+          loudness: body.loudness,
+          audio: body.audio,
+          ai: feedback,
+          overall: overallScore(feedback.metrics),
+          instructor_name: instructor.name,
+          model: response.model,
+        })
+        .select("id")
+        .single();
+      if (saveError) throw saveError;
+      sessionId = saved.id;
+      outcome = "ok";
+      await recordUsage(account, ent.via);
+
+      const updated = await getOrCreateAccount(user);
+      return Response.json({ sessionId: saved.id, account: accountSummary(updated) });
+    } finally {
+      await recordSpend({ userId: user.id, sessionId, model: response.model, usage: response.usage, status: outcome });
     }
-    if (response.stop_reason === "max_tokens") {
-      throw new HttpError(502, "The review was cut short. Please try again.");
-    }
-    const text = response.content.find((block) => block.type === "text");
-    if (!text || text.type !== "text") {
-      throw new HttpError(502, "The review came back empty. Please try again.");
-    }
-
-    const feedback = tidyFeedback(JSON.parse(text.text) as CoachFeedback, body.frames.length);
-
-    // Keep a cover image and the frames the priorities point to; drop the rest.
-    const keep = new Set([Math.ceil(body.frames.length / 2), ...feedback.priorities.map((p) => p.frame)]);
-    const thumbs = Object.fromEntries(
-      [...keep].filter((n) => body.thumbs[n - 1]).map((n) => [String(n), body.thumbs[n - 1]])
-    );
-
-    const { data: saved, error: saveError } = await adminDb()
-      .from("coach_sessions")
-      .insert({
-        user_id: user.id,
-        piece: body.piece?.trim() || null,
-        goal: body.goal?.trim() || null,
-        duration_sec: body.durationSec,
-        frame_times: body.frames.map((f) => f.t),
-        thumbs,
-        loudness: body.loudness,
-        audio: body.audio,
-        ai: feedback,
-        overall: overallScore(feedback.metrics),
-        instructor_name: instructor.name,
-        model: response.model,
-      })
-      .select("id")
-      .single();
-    if (saveError) throw saveError;
-    await recordUsage(account, ent.via);
-
-    console.info("coach.analyze", {
-      user: user.id,
-      model: response.model,
-      input: response.usage.input_tokens,
-      cacheRead: response.usage.cache_read_input_tokens,
-      output: response.usage.output_tokens,
-    });
-
-    const updated = await getOrCreateAccount(user);
-    return Response.json({ sessionId: saved.id, account: accountSummary(updated) });
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) {
       return Response.json({ error: "The coach is busy right now. Please try again in a minute." }, { status: 429 });

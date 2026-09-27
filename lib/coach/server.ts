@@ -2,6 +2,7 @@
 
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { runtimeEnv } from "./env";
+import { costUsd, type TokenUsage } from "./pricing";
 
 
 export const FREE_ANALYSES = Number(process.env.COACH_FREE_ANALYSES ?? 3);
@@ -57,6 +58,7 @@ export type CoachAccount = {
   userId: string;
   email?: string;
   trialUsed: number;
+  bonusAnalyses: number;
   stripeCustomerId?: string;
   subscriptionId?: string;
   subscriptionStatus?: string;
@@ -69,6 +71,7 @@ type AccountRow = {
   user_id: string;
   email: string | null;
   trial_used: number;
+  bonus_analyses?: number | null; // absent until the 20260926 migration runs
   stripe_customer_id: string | null;
   subscription_id: string | null;
   subscription_status: string | null;
@@ -82,6 +85,7 @@ export function toAccount(row: AccountRow): CoachAccount {
     userId: row.user_id,
     email: row.email ?? undefined,
     trialUsed: row.trial_used ?? 0,
+    bonusAnalyses: row.bonus_analyses ?? 0,
     stripeCustomerId: row.stripe_customer_id ?? undefined,
     subscriptionId: row.subscription_id ?? undefined,
     subscriptionStatus: row.subscription_status ?? undefined,
@@ -124,6 +128,11 @@ function currentPeriod(account: CoachAccount, now: number) {
   return { start: now, used: 0 };
 }
 
+// Free analyses for this account: the standard allowance plus any admin-granted bonus.
+export function freeAllowance(account: CoachAccount) {
+  return FREE_ANALYSES + account.bonusAnalyses;
+}
+
 export function entitlement(account: CoachAccount, now = Date.now()): Entitlement {
   if (isPro(account)) {
     const { used } = currentPeriod(account, now);
@@ -132,7 +141,7 @@ export function entitlement(account: CoachAccount, now = Date.now()): Entitlemen
       ? { allowed: true, via: "pro", remaining }
       : { allowed: false, reason: "monthly_limit", remaining: 0 };
   }
-  const remaining = FREE_ANALYSES - account.trialUsed;
+  const remaining = freeAllowance(account) - account.trialUsed;
   return remaining > 0
     ? { allowed: true, via: "trial", remaining }
     : { allowed: false, reason: "trial_used", remaining: 0 };
@@ -158,7 +167,7 @@ export function accountSummary(account: CoachAccount) {
     subscriptionStatus: account.subscriptionStatus ?? null,
     periodEnd: account.periodEnd ?? null,
     remaining: ent.remaining,
-    freeAnalyses: FREE_ANALYSES,
+    freeAnalyses: freeAllowance(account),
     proMonthlyAnalyses: PRO_MONTHLY_ANALYSES,
     canManageBilling: Boolean(account.stripeCustomerId),
     paymentsEnabled: Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID),
@@ -168,3 +177,34 @@ export function accountSummary(account: CoachAccount) {
 }
 
 export type AccountSummary = ReturnType<typeof accountSummary>;
+
+export type SpendStatus = "ok" | "refusal" | "max_tokens" | "error";
+
+// Logs one Claude call and its estimated cost. Never throws: a logging problem
+// (or the spend table not existing yet) must not fail a student's analysis.
+export async function recordSpend(entry: {
+  userId: string;
+  sessionId: string | null;
+  model: string;
+  usage: TokenUsage;
+  status: SpendStatus;
+}) {
+  try {
+    const { error } = await adminDb()
+      .from("coach_usage")
+      .insert({
+        user_id: entry.userId,
+        session_id: entry.sessionId,
+        model: entry.model,
+        status: entry.status,
+        input_tokens: entry.usage.input_tokens,
+        output_tokens: entry.usage.output_tokens,
+        cache_write_tokens: entry.usage.cache_creation_input_tokens ?? 0,
+        cache_read_tokens: entry.usage.cache_read_input_tokens ?? 0,
+        cost_usd: costUsd(entry.model, entry.usage),
+      });
+    if (error) console.error("Could not record spend", error.message);
+  } catch (err) {
+    console.error("Could not record spend", err);
+  }
+}
