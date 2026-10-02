@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { db, tx, id as genId, type Question, type Quiz } from "@/lib/instant";
-import { getWeekFromStudyStart } from "@/lib/utils";
+import { getCurrentStudyWeek, STUDY_PERIODS } from "@/lib/utils";
 import {
   DEFAULT_SCALE_LABELS,
   isActiveParticipant,
@@ -85,7 +85,7 @@ export default function TeacherQuizPage() {
   const handleSubmit = async (answers: Record<string, string | number>) => {
     if (!quiz || !teacher || !selectedStudentId) return;
     const responseId = genId();
-    const week = getWeekFromStudyStart(quiz.studyStartDate);
+    const { period, week } = getCurrentStudyWeek(quiz.studyStartDate);
     const answerTxs = Object.entries(answers)
       .filter(([, value]) => value !== "" && value !== undefined)
       .map(([questionId, value]) =>
@@ -99,7 +99,7 @@ export default function TeacherQuizPage() {
       tx.responses[responseId].update({
         quizId: quiz.id,
         submittedAt: Date.now(),
-        metadata: { userAgent: navigator.userAgent, week },
+        metadata: { userAgent: navigator.userAgent, week, period: STUDY_PERIODS[period].name },
         respondentType: "teacher",
         studentId: selectedStudentId,
         teacherId,

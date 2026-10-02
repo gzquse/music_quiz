@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { db, tx, id as genId, Quiz, Question } from "@/lib/instant";
 import { Button, Input, Textarea, Card } from "@/components/ui";
 import { QuestionEditor } from "./QuestionEditor";
-import { generateId } from "@/lib/utils";
+import { generateId, STUDY_PERIODS } from "@/lib/utils";
 import { DEFAULT_SCALE_LABELS } from "@/lib/survey";
 
 interface QuizBuilderProps {
@@ -199,7 +199,8 @@ export function QuizBuilder({ existingQuiz, existingQuestions }: QuizBuilderProp
                 className="w-full max-w-xs px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]"
               />
               <p className="text-xs text-[var(--muted)] mt-1">
-                Week 1 begins on this date. New submissions are assigned to weeks 1-16 based on this.
+                Week 1 of {STUDY_PERIODS[0].name} begins on this date (weeks 1-{STUDY_PERIODS[0].weeks}).
+                Later periods ({STUDY_PERIODS.slice(1).map((p) => p.name).join(", ")}) restart at Week 1 on their own start dates.
               </p>
             </div>
             <label className="flex items-center gap-2 cursor-pointer">

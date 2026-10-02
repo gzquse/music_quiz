@@ -7,19 +7,20 @@ import { db, tx } from "@/lib/instant";
 import { Card, Button } from "@/components/ui";
 import {
   formatDateTime,
-  getWeekFromResponse,
+  getResponseStudyWeek,
   formatWeekLabel,
   getScaleAnswerValues,
-  MAX_STUDY_WEEK,
+  getStudyPeriodAt,
+  STUDY_PERIODS,
 } from "@/lib/utils";
-
-const WEEK_INDICES = Array.from({ length: MAX_STUDY_WEEK }, (_, i) => i + 1);
 
 export default function ResponsesViewerPage() {
   const params = useParams();
   const quizId = params.id as string;
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState(() => getStudyPeriodAt(Date.now()));
   const [selectedWeek, setSelectedWeek] = useState<number | "all">("all");
+  const weekIndices = Array.from({ length: STUDY_PERIODS[selectedPeriod].weeks }, (_, i) => i + 1);
 
   const { data, isLoading, error } = db.useQuery({
     quizzes: {},
@@ -76,19 +77,19 @@ export default function ResponsesViewerPage() {
 
   const teacherStudyStart = quiz ? quiz.studyStartDate : undefined;
   const studentStudyStart = studentQuiz?.studyStartDate ?? teacherStudyStart;
-  const getWeek = (r: { submittedAt: number; metadata?: { week?: number } }, studyStart?: number | null) =>
-    getWeekFromResponse(r, studyStart);
+  // Responses in the selected period, optionally narrowed to the selected week.
+  const inSelection = (r: { submittedAt: number; metadata?: { week?: number } }, studyStart?: number | null) => {
+    const sw = getResponseStudyWeek(r, studyStart);
+    return sw?.period === selectedPeriod && (selectedWeek === "all" || sw.week === selectedWeek);
+  };
 
   const getTeacherResponse = (teacherId: string, studentId: string) => {
     const teacherResponses = responses.filter(
       (r: { respondentType?: string; teacherId?: string; studentId?: string }) =>
         r.respondentType === "teacher" && r.teacherId === teacherId && r.studentId === studentId
-    );
+    ).filter((r) => inSelection(r, teacherStudyStart));
     if (teacherResponses.length === 0) return null;
-    if (selectedWeek !== "all") {
-      const forWeek = teacherResponses.find((r) => getWeek(r, teacherStudyStart) === selectedWeek);
-      return forWeek ?? null;
-    }
+    if (selectedWeek !== "all") return teacherResponses[0];
     return teacherResponses.sort(
       (a: { submittedAt: number }, b: { submittedAt: number }) => b.submittedAt - a.submittedAt
     )[0];
@@ -98,12 +99,9 @@ export default function ResponsesViewerPage() {
     const relevant = studentResponses.filter(
       (r: { respondentType?: string; studentId?: string }) =>
         r.respondentType === "student" && r.studentId === studentId
-    );
-    if (studentResponses.length === 0) return null;
-    if (selectedWeek !== "all") {
-      const forWeek = relevant.find((r) => getWeek(r, studentStudyStart) === selectedWeek);
-      return forWeek ?? null;
-    }
+    ).filter((r) => inSelection(r, studentStudyStart));
+    if (relevant.length === 0) return null;
+    if (selectedWeek !== "all") return relevant[0];
     return relevant.sort(
       (a: { submittedAt: number }, b: { submittedAt: number }) => b.submittedAt - a.submittedAt
     )[0];
@@ -165,6 +163,22 @@ export default function ResponsesViewerPage() {
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
+            <label htmlFor="period" className="text-sm font-medium text-[var(--muted)]">Period:</label>
+            <select
+              id="period"
+              value={selectedPeriod}
+              onChange={(e) => {
+                setSelectedPeriod(Number(e.target.value));
+                setSelectedWeek("all");
+              }}
+              className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm"
+            >
+              {STUDY_PERIODS.map((p, i) => (
+                <option key={p.name} value={i}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
             <label htmlFor="week" className="text-sm font-medium text-[var(--muted)]">Week:</label>
             <select
               id="week"
@@ -173,8 +187,8 @@ export default function ResponsesViewerPage() {
               className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm"
             >
               <option value="all">All (latest)</option>
-              {WEEK_INDICES.map((w) => (
-                <option key={w} value={w}>{formatWeekLabel(w, teacherStudyStart)}</option>
+              {weekIndices.map((w) => (
+                <option key={w} value={w}>{formatWeekLabel({ period: selectedPeriod, week: w }, teacherStudyStart)}</option>
               ))}
             </select>
           </div>

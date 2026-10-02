@@ -112,7 +112,16 @@ https://music-quiz-xi.vercel.app/quiz/TEACHER_QUIZ_ID/teacher/TEACHER_4_ID
 
 ## Week tracking
 
-**Study Start Date**: When editing a survey, set "Study Start Date (Week 1)" to the date your 8-week study begins. Week 1 = that date, Week 2 = 7 days later, etc. New submissions are assigned to weeks 1–8 based on the submission date.
+**Study periods**: Weeks are counted within a study period and restart at Week 1 in each one (`STUDY_PERIODS` in `lib/utils.ts`):
+
+| Period | Weeks | Rule |
+|--------|-------|------|
+| Spring 2026 | 1–16 | From the survey's Study Start Date (Feb 1): Week 1 = Feb 1–8, then 7-day weeks. Unchanged. |
+| Fall 2026 | 1–8 | Week 1 = Sep 21–27, Week 2 = Sep 28–Oct 4, … Week 8 = Nov 9–15. Monday–Sunday, US Central dates. |
+
+A submission belongs to the latest period that has started. Analytics and View Responses have a **Period** picker (defaults to the current period). To start another period, add an entry with its first Monday to `STUDY_PERIODS`.
+
+**Study Start Date**: When editing a survey, "Study Start Date (Week 1)" sets Week 1 of the first period (Spring 2026). Week 1 = that date, Week 2 = 8 days later, then 7-day weeks.
 
 **Start from now**: Set Study Start Date to today. All submissions this week will be Week 1; next week will be Week 2, and so on.
 

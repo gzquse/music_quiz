@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { db, tx, id as genId, type Question, type Quiz } from "@/lib/instant";
-import { formatWeekLabel, getWeekFromResponse, getWeekFromStudyStart } from "@/lib/utils";
+import { formatWeekLabel, getCurrentStudyWeek, getResponseStudyWeek, STUDY_PERIODS } from "@/lib/utils";
 import {
   DEFAULT_SCALE_LABELS,
   SURVEY_DESCRIPTION,
@@ -71,17 +71,18 @@ export default function StudentQuizPage() {
       } satisfies Quiz)
     : undefined;
 
-  const currentWeek = getWeekFromStudyStart(quiz?.studyStartDate);
+  const currentWeek = getCurrentStudyWeek(quiz?.studyStartDate);
   const alreadyCompleted = (data?.responses || []).some((response) => {
     if (response.quizId !== quizId) return false;
     if (response.respondentType && response.respondentType !== "student") return false;
-    return getWeekFromResponse(response, quiz?.studyStartDate) === currentWeek;
+    const week = getResponseStudyWeek(response, quiz?.studyStartDate);
+    return week?.period === currentWeek.period && week.week === currentWeek.week;
   });
 
   const handleSubmit = async (answers: Record<string, string | number>) => {
     if (!quiz || !student) return;
     const responseId = genId();
-    const week = getWeekFromStudyStart(quiz.studyStartDate);
+    const { period, week } = getCurrentStudyWeek(quiz.studyStartDate);
     const answerTxs = Object.entries(answers)
       .filter(([, value]) => value !== "" && value !== undefined)
       .map(([questionId, value]) =>
@@ -95,7 +96,7 @@ export default function StudentQuizPage() {
       tx.responses[responseId].update({
         quizId: quiz.id,
         submittedAt: Date.now(),
-        metadata: { userAgent: navigator.userAgent, week },
+        metadata: { userAgent: navigator.userAgent, week, period: STUDY_PERIODS[period].name },
         respondentType: "student",
         studentId,
         teacherId: "",
